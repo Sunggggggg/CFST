@@ -60,21 +60,6 @@ def main(gpu, args, cfg):
         device=torch.device(gpu)
     )
     model = SyncBatchNorm.convert_sync_batchnorm(model).to(gpu)
-    
-    if args.pretrained != '' and os.path.isfile(args.pretrained):
-        checkpoint = torch.load(args.pretrained, map_location='cpu')
-        best_performance = checkpoint['performance']
-        model.load_state_dict(checkpoint['state_dict'], strict=False)
-        if gpu==0:
-            logger.info(f'=> Loaded checkpoint from {args.pretrained}...')
-            logger.info(f'=> Performance on 3DPW test set {best_performance}')
-        del checkpoint
-    elif args.pretrained == '':
-        if gpu==0:
-            logger.info('=> No checkpoint specified.')
-    else:
-        raise ValueError(f'{args.pretrained} is not a checkpoint path!')
-
     model = DistributedDataParallel(model, device_ids=gpu, broadcast_buffers=False)
 
     gen_optimizer = get_optimizer(
