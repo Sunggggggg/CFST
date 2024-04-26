@@ -41,6 +41,8 @@ def main(gpu, args, cfg):
     data_loaders = get_data_loaders(cfg, gpu)
     train_2d_loader, train_3d_loader, valid_loader = data_loaders
     
+    # ========= Initialize networks, optimizers and lr_schedulers ========= #
+    
     ## 배치놈 싱크로 나이즈 해야함
 
     # ========= Start Training ========= #

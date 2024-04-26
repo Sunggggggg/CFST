@@ -3,54 +3,68 @@ import torch
 import torch.nn as nn
 
 from lib.models.spin import spin_backbone_init
-from lib.models.pooling import *
+from lib.models.encoder import STencoder
 
 class CFST(nn.Module):
     def __init__(self, 
-                 d_model=512,
+                 seqlen=16,
+                 n_layers=3,
+                 d_model=2048,
+                 num_head=8, 
+                 dropout=0., 
+                 drop_path_r=0.,
+                 atten_drop=0.,
+                 mask_ratio=0.,
+                 stride_short=4,
+
+                 short_n_layers = 3,
+                 short_d_model = 256,
+                 short_num_head = 8,
+                 short_dropout = 0.1, 
+                 short_drop_path_r = 0.2,
+                 short_atten_drop = 0.,
+                 drop_reg_short=0.5,
+                 device=torch.device('cuda:0'),
                  ) :
         super().__init__()
-        """
-        Tree
-        - SPIN backbone
-        - Temporal brach
-            - Pooling
-            - Transformer
-        - Spatial barch
-            - Pooling
-            - Transformer
-        - Fine branch
-            - ST pooing
-            - 2Aggergation
-        """
         super(CFST, self).__init__()
-        self.d_model = d_model
+        self.seqlen = seqlen
+        self.stride_short = stride_short
+        self.mid_frame = seqlen // 2
+        self.d_model = d_model 
         ##########################
         # SPIN Backbone
         ##########################
         self.spin_backbone = spin_backbone_init()
+        self.patchfiy = nn.Conv2d(d_model, d_model, 2, 2)
+        self.num_patch = num_patch = int((224/8/2)**(2))
 
         ##########################
-        # Temporal branch
+        # STBranch
         ##########################
+        self.stencoder = STencoder(seqlen=seqlen, hw=num_patch, embed_dim=d_model, stride_short=stride_short,
+                              n_layers=n_layers, num_head=num_head, dropout=dropout, drop_path_r=drop_path_r, 
+                              atten_drop=atten_drop, mask_ratio=mask_ratio)
+
+        self.to(device)
 
 
-
-    def forward(self, x):
+    def forward(self, x, is_train=False):
         """
         x : [B, T, 3, H, W]
         """
         ##########################
         # SPIN Backbone
         ##########################
-        B, T, _, H, W = x.shape
-        x = x.reshape(B*T, -1, H, W)
-        featmap = self.spin_backbone(x)
-        st_feat = featmap.permute(0, 2, 3, 1).reshape(B, T, -1, self.d_model)   # []
+        B = x.shape[0]
+        x = torch.flatten(x, 0, 1)
+        featmap = self.spin_backbone(x) # [BT, d, H, W]
+        global_st_feat = self.patchfiy(featmap).flatten(-2).permute(0, -1, 1)           
+        global_st_feat = featmap.reshape(B, self.seqlen, self.num_patch, self.d_model) # [B, T, N, d]
 
-        s_feat = temporal_pool(st_feat)
-        t_feat = sptial_pool(st_feat)
-        
+        self.stencoder(global_st_feat)
+         
+    
 
 
 
