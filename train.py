@@ -41,12 +41,7 @@ def main(gpu, args, cfg):
     data_loaders = get_data_loaders(cfg, gpu)
     train_2d_loader, train_3d_loader, valid_loader = data_loaders
     
-    for db in train_3d_loader :
-        for k in db.keys():
-            print(db[k].shape)
-        break 
-
-    
+    ## 배치놈 싱크로 나이즈 해야함
 
     # ========= Start Training ========= #
     
