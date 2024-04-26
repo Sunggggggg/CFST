@@ -52,7 +52,7 @@ def main(gpu, args, cfg):
         d_model=cfg.MODEL.d_model,
         num_head=cfg.MODEL.num_head,
         dropout=cfg.MODEL.dropout,
-        drop_path_r=cfg.MODEL.drop_part_r,
+        drop_path_r=cfg.MODEL.drop_path_r,
         atten_drop=cfg.MODEL.atten_drop,
         mask_ratio=cfg.MODEL.mask_ratio,
         stride_short=cfg.MODEL.stride_short,
