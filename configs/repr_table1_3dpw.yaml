@@ -37,8 +37,8 @@ TRAIN:
   #   - 'Insta'
   DATASETS_3D:
     - 'ThreeDPW'
-    #- 'MPII3D'
-    #- 'Human36M'
+    - 'MPII3D'
+    - 'Human36M'
   DATASET_EVAL: 'ThreeDPW'
   GEN_LR: 0.0001
   GEN_WD: 0.0

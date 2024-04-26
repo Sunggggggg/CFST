@@ -78,6 +78,20 @@ def main(gpu, args, cfg):
         warmup_steps=cfg.TRAIN.LR_PATIENCE,
     )
     # ========= Start Training ========= #
+    Trainer(
+        cfg=cfg,
+        data_loaders=data_loaders,
+        generator=generator,
+        motion_discriminator=motion_discriminator,
+        criterion=loss,
+        dis_motion_optimizer=dis_motion_optimizer,
+        gen_optimizer=gen_optimizer,
+        writer=writer,
+        lr_scheduler=lr_scheduler,
+        motion_lr_scheduler=motion_lr_scheduler,
+        val_epoch=cfg.TRAIN.val_epoch
+    ).fit()
+
     
 
 if __name__ == '__main__':
