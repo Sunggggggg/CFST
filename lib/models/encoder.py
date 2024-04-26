@@ -174,7 +174,8 @@ class STencoder(nn.Module) :
                  hw, 
                  embed_dim=512,
                  stride_short=4,
-                 n_layers=3,
+                 n_layers=2,
+                 short_n_layers=3,
                  num_head=8,
                  dropout=0., 
                  drop_path_r=0.,
@@ -182,6 +183,7 @@ class STencoder(nn.Module) :
                  mask_ratio=0.,
                  ):
         super().__init__()
+        self.mid_frame = int(seqlen // 2)
         self.stride_short = stride_short
         self.mask_ratio = mask_ratio
         
@@ -189,17 +191,20 @@ class STencoder(nn.Module) :
         self.temporal_pos_embed = nn.Parameter(torch.zeros(1, seqlen, embed_dim))
 
         self.temporal_trans = MaskTransformer(depth=n_layers, embed_dim=embed_dim, 
-                            mlp_hidden_dim=embed_dim*4, head=num_head, 
+                            mlp_hidden_dim=embed_dim*2, head=num_head, 
                             drop_rate=dropout, drop_path_rate=drop_path_r, 
                             attn_drop_rate=atten_drop, length=seqlen)
         
         self.spatial_trans = MaskTransformer(depth=n_layers, embed_dim=embed_dim, 
-                            mlp_hidden_dim=embed_dim*4, head=num_head, 
+                            mlp_hidden_dim=embed_dim*2, head=num_head, 
                             drop_rate=dropout, drop_path_rate=drop_path_r, 
                             attn_drop_rate=atten_drop, length=hw)
         
-        self.st_trans = STtransformer(depth=n_layers, embed_dim=embed_dim, 
-                            mlp_hidden_dim=embed_dim*4, head=num_head, 
+
+        local_dim = embed_dim * 2
+        self.local_proj = nn.Linear(embed_dim, local_dim)
+        self.st_trans = STtransformer(depth=short_n_layers, embed_dim=local_dim, 
+                            mlp_hidden_dim=local_dim*2, head=num_head, 
                             drop_rate=dropout, drop_path_rate=drop_path_r, 
                             attn_drop_rate=atten_drop)
         
@@ -217,8 +222,8 @@ class STencoder(nn.Module) :
         global_spatial_feat = global_spatial_feat + self.spatial_pos_embed
         global_temporal_feat = global_temporal_feat + self.temporal_pos_embed
 
-        temporal_pred, temporal_mask = self.temporal_trans(global_temporal_feat, is_train=is_train, mask_ratio=self.mask_ratio) # []
-        spatial_pred, spatial_mask = self.spatial_trans(global_spatial_feat, is_train=is_train, mask_ratio=self.mask_ratio)     # 
+        global_temporal_feat, temporal_mask = self.temporal_trans(global_temporal_feat, is_train=is_train, mask_ratio=self.mask_ratio) # [B, T, d]
+        global_spatial_feat, spatial_mask = self.spatial_trans(global_spatial_feat, is_train=is_train, mask_ratio=self.mask_ratio)     # [B, N, d]
 
         ###############################
         # Local st-transformer
@@ -227,8 +232,10 @@ class STencoder(nn.Module) :
         spatial_pos_embed_local = self.spatial_pos_embed[:, 0::self.stride_short]
         temporal_pos_embed_local = self.temporal_pos_embed[:, self.mid_frame - self.stride_short:self.mid_frame + self.stride_short + 1]
 
-        st_features = self.st_trans(x_local, spatial_pos_embed_local, temporal_pos_embed_local)
+        x_local = self.local_proj(x_local)
+        local_st_feat = self.st_trans(x_local, spatial_pos_embed_local, temporal_pos_embed_local) # [B, t, n, d]
 
+        return local_st_feat, global_temporal_feat, global_spatial_feat
 
 
 

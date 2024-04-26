@@ -5,11 +5,15 @@ import numpy as np
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import torch.backends.cudnn as cudnn
+from torch.nn import SyncBatchNorm
+from torch.nn.parallel import DistributedDataParallel
 
 from lib.core.trainer import Trainer
+from lib.models.CFST import CFST
 from lib.core.config import parse_args
-from lib.utils.utils import prepare_output_dir, create_logger, setup_for_distributed
+from lib.utils.utils import prepare_output_dir, create_logger, setup_for_distributed, get_optimizer
 from lib.dataset.loaders import get_data_loaders
+from lr_scheduler import CosineAnnealingWarmupRestarts
 
 def main(gpu, args, cfg):
     if cfg.GPUS > 1:
@@ -39,12 +43,55 @@ def main(gpu, args, cfg):
 
     # ========= Dataloaders ========= #
     data_loaders = get_data_loaders(cfg, gpu)
-    train_2d_loader, train_3d_loader, valid_loader = data_loaders
+    
     
     # ========= Initialize networks, optimizers and lr_schedulers ========= #
+    model = CFST(
+        seqlen=cfg.DATASET.SEQLEN,
+        n_layers=cfg.MODEL.n_layers,
+        d_model=cfg.MODEL.d_model,
+        num_head=cfg.MODEL.num_head,
+        dropout=cfg.MODEL.dropout,
+        drop_path_r=cfg.MODEL.drop_part_r,
+        atten_drop=cfg.MODEL.atten_drop,
+        mask_ratio=cfg.MODEL.mask_ratio,
+        stride_short=cfg.MODEL.stride_short,
+        short_n_layers=cfg.MODEL.short_n_layers,
+        device=torch.device(gpu)
+    )
+    model = SyncBatchNorm.convert_sync_batchnorm(model).to(gpu)
     
-    ## 배치놈 싱크로 나이즈 해야함
+    if args.pretrained != '' and os.path.isfile(args.pretrained):
+        checkpoint = torch.load(args.pretrained, map_location='cpu')
+        best_performance = checkpoint['performance']
+        model.load_state_dict(checkpoint['state_dict'], strict=False)
+        if gpu==0:
+            logger.info(f'=> Loaded checkpoint from {args.pretrained}...')
+            logger.info(f'=> Performance on 3DPW test set {best_performance}')
+        del checkpoint
+    elif args.pretrained == '':
+        if gpu==0:
+            logger.info('=> No checkpoint specified.')
+    else:
+        raise ValueError(f'{args.pretrained} is not a checkpoint path!')
 
+    model = DistributedDataParallel(model, device_ids=gpu, broadcast_buffers=False)
+
+    gen_optimizer = get_optimizer(
+        model=model,
+        optim_type=cfg.TRAIN.GEN_OPTIM,
+        lr=cfg.TRAIN.GEN_LR,
+        weight_decay=cfg.TRAIN.GEN_WD,
+        momentum=cfg.TRAIN.GEN_MOMENTUM,
+    )
+
+    lr_scheduler = CosineAnnealingWarmupRestarts(
+        gen_optimizer,
+        first_cycle_steps = cfg.TRAIN.END_EPOCH,
+        max_lr=cfg.TRAIN.GEN_LR,
+        min_lr=cfg.TRAIN.GEN_LR * 0.1,
+        warmup_steps=cfg.TRAIN.LR_PATIENCE,
+    )
     # ========= Start Training ========= #
     
 
