@@ -114,7 +114,7 @@ class STtransformer(nn.Module):
     def __init__(self, depth=3, embed_dim=512, mlp_hidden_dim=1024, head=8, 
                  drop_rate=0.1, drop_path_rate=0.2, attn_drop_rate=0.) :
         super().__init__()
-        norm_layer = norm_layer or partial(nn.LayerNorm, eps=1e-6)
+        norm_layer = partial(nn.LayerNorm, eps=1e-6)
 
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, depth)]
         self.SpatialBlocks = nn.ModuleList([
