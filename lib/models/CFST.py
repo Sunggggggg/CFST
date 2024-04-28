@@ -26,11 +26,6 @@ class CFST(nn.Module):
         self.stride_short = stride_short
         self.mid_frame = seqlen // 2
         self.d_model = d_model 
-        ##########################
-        # SPIN Backbone
-        ##########################
-        self.spin_backbone = spin_backbone_init(device)
-        self.patchfiy = nn.Conv2d(in_channels=d_model, out_channels=d_model, kernel_size=2, stride=2)
         self.num_patch = num_patch = int((224/8/2)**(2))
 
         ##########################
@@ -47,8 +42,24 @@ class CFST(nn.Module):
         self.t_proj = nn.Linear(d_model//2, d_model//2)
         self.local_spa_atten = CrossAttention(d_model//2, num_heads=num_head, qk_scale=True, qkv_bias=None)
         self.local_tem_atten = CrossAttention(d_model//2, num_heads=num_head, qk_scale=True, qkv_bias=None)
+        self.apply(self._init_weights)
+
+        ##########################
+        # SPIN Backbone
+        ##########################
+        self.spin_backbone = spin_backbone_init(device)
+        self.patchfiy = nn.Conv2d(in_channels=d_model, out_channels=d_model, kernel_size=2, stride=2)
 
         self.to(device)
+
+    def _init_weights(self, m):
+        if isinstance(m, nn.Linear):
+            torch.nn.init.xavier_uniform_(m.weight)
+            if isinstance(m, nn.Linear) and m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
 
 
     def forward(self, x, is_train=False):

@@ -210,7 +210,20 @@ class STencoder(nn.Module) :
                             attn_drop_rate=atten_drop)
         
         self.out_proj = nn.Linear(embed_dim, embed_dim//2)
-        
+
+    def initialize_weights(self):
+        torch.nn.init.normal_(self.spatial_pos_embed, std=.02)
+        torch.nn.init.normal_(self.temporal_pos_embed, std=.02)
+        self.apply(self._init_weights)
+
+    def _init_weights(self, m):
+        if isinstance(m, nn.Linear):
+            torch.nn.init.xavier_uniform_(m.weight)
+            if isinstance(m, nn.Linear) and m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
 
     def forward(self, x, is_train=False) :
         """
