@@ -233,6 +233,8 @@ class STencoder(nn.Module) :
         spatial_pos_embed_local = self.spatial_pos_embed[:, 0::self.stride_short]
         temporal_pos_embed_local = self.temporal_pos_embed[:, self.mid_frame - self.stride_short:self.mid_frame + self.stride_short + 1]
 
+        print(x_local.shape, spatial_pos_embed_local.shape, temporal_pos_embed_local.shape)
+
         x_local = self.local_proj(x_local)
         local_st_feat = self.st_trans(x_local, spatial_pos_embed_local, temporal_pos_embed_local) # [B, t, n, d]
 
