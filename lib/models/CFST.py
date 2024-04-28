@@ -102,12 +102,12 @@ class CFST(nn.Module):
         local_st_feat = self.local_tem_atten(local_st_feat, proj_temporal_feat)             # [B, tn, d/2]
         local_st_feat = local_st_feat.reshape(B, self.stride_short*2 + 1, self.d_local, -1) # [B, t, d/2, n]
         local_t_feat = self.fusion(local_st_feat).squeeze()   # [B, t, d/2]
-        local_t_feat = self.output_proj(local_t_feat)
+        global_t_feat = self.output_proj(local_t_feat)
 
         ##########################
         # Regressor
         ##########################
-        _, pred_global = self.regressor(local_t_feat, is_train=is_train, J_regressor=J_regressor, n_iter=3)
+        _, pred_global = self.regressor(global_t_feat, is_train=is_train, J_regressor=J_regressor, n_iter=3)
         smpl_output = self.ktd_regressor(local_t_feat, init_pose=pred_global[0], init_shape=pred_global[1], init_cam=pred_global[2], is_train=is_train, J_regressor=J_regressor)
 
         if not is_train:    # Eval
