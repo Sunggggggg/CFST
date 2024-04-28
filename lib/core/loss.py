@@ -249,11 +249,18 @@ class Loss(nn.Module):
         ##########################
         # Local 
         ##########################
-        real_2d = real_2d[:, seq_len // 2 - stride: seq_len // 2 + stride+1]
+        print(stride)
+        print(real_2d.shape)
+        print(real_3d.shape)
+        print(real_3d_theta.shape)
+        print(w_3d.shape)
+        print(w_smpl.shape)
+
+        real_2d = real_2d[:, seq_len // 2 - stride: seq_len // 2 + stride+1]                    # [B, 1]
         real_3d = data_3d['kp_3d'][:, seq_len // 2 - stride: seq_len // 2 + stride+1]
-        real_3d_theta = data_3d['theta'][:, seq_len // 2 - stride: seq_len // 2 + stride+1]
-        w_3d = data_3d['w_3d'].type(torch.bool)[:, seq_len // 2 - stride: seq_len // 2 + stride+1]
-        w_smpl = data_3d['w_smpl'].type(torch.bool)[:, seq_len // 2 - stride: seq_len // 2 + stride+1]
+        real_3d_theta = data_3d['theta'][:, seq_len // 2 - stride: seq_len // 2 + stride+1]             # [B, 1, 85]
+        w_3d = data_3d['w_3d'].type(torch.bool)[:, seq_len // 2 - stride: seq_len // 2 + stride+1]      # [B]
+        w_smpl = data_3d['w_smpl'].type(torch.bool)[:, seq_len // 2 - stride: seq_len // 2 + stride+1]  # [B]
 
         print(real_2d.shape)
         print(real_3d.shape)
