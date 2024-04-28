@@ -215,6 +215,11 @@ class STencoder(nn.Module) :
     def forward(self, x, is_train=False) :
         """
         x : [B, T, N, d]
+
+        Return 
+            local_st_feat           : [B, t, n, d]
+            global_temporal_feat    : [B, T, d]
+            global_spatial_feat     : [B, N, d]
         """
         ###############################
         # Global aggregation

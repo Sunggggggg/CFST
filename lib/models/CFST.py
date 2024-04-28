@@ -43,8 +43,8 @@ class CFST(nn.Module):
         ##########################
         # Aggregation
         ##########################
-        self.s_proj = nn.Linear(d_model, d_model//2)
-        self.t_proj = nn.Linear(d_model, d_model//2)
+        self.s_proj = nn.Linear(d_model//2, d_model//2)
+        self.t_proj = nn.Linear(d_model//2, d_model//2)
         self.local_spa_atten = CrossAttention(d_model//2, num_heads=num_head, qk_scale=True, qkv_bias=None)
         self.local_tem_atten = CrossAttention(d_model//2, num_heads=num_head, qk_scale=True, qkv_bias=None)
 
@@ -72,7 +72,6 @@ class CFST(nn.Module):
         ##########################
         # Aggregation
         ##########################
-        print(local_st_feat.shape, global_temporal_feat.shape, global_spatial_feat.shape)
         proj_spatial_feat = self.s_proj(global_spatial_feat)
         proj_temporal_feat = self.t_proj(global_temporal_feat)
 
