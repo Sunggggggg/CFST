@@ -58,10 +58,11 @@ class CFST(nn.Module):
         ##########################
         # SPIN Backbone
         ##########################
-        print("Input shape",x.shape)
+        print("Input shape", x.shape)
         B = x.shape[0]
         x = torch.flatten(x, 0, 1)
         featmap = self.spin_backbone(x) # [BT, d, H, W]
+        print("featmap shape", featmap.shape)
         global_st_feat = self.patchfiy(featmap).flatten(-2).permute(0, -1, 1)           
         global_st_feat = featmap.reshape(B, self.seqlen, self.num_patch, self.d_model)              # [B, T, N, d]
 
