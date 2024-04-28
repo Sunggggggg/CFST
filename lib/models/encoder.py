@@ -201,13 +201,11 @@ class STencoder(nn.Module) :
                             drop_rate=dropout, drop_path_rate=drop_path_r, 
                             attn_drop_rate=atten_drop, length=hw, device=device)
         
-
-        local_dim = embed_dim * 2
-        self.local_proj = nn.Linear(embed_dim, local_dim)
-        self.st_trans = STtransformer(depth=short_n_layers, embed_dim=local_dim, 
-                            mlp_hidden_dim=local_dim*2, head=num_head, 
+        self.st_trans = STtransformer(depth=short_n_layers, embed_dim=embed_dim, 
+                            mlp_hidden_dim=embed_dim*2, head=num_head, 
                             drop_rate=dropout, drop_path_rate=drop_path_r, 
                             attn_drop_rate=atten_drop)
+        self.out_proj = nn.Linear(embed_dim, embed_dim//2)
         
 
     def forward(self, x, is_train=False) :
@@ -229,14 +227,12 @@ class STencoder(nn.Module) :
         ###############################
         # Local st-transformer
         ###############################
-        x_local = x[:, self.mid_frame - self.stride_short:self.mid_frame + self.stride_short + 1, 0::self.stride_short]
-        spatial_pos_embed_local = self.spatial_pos_embed[:, 0::self.stride_short]
-        temporal_pos_embed_local = self.temporal_pos_embed[:, self.mid_frame - self.stride_short:self.mid_frame + self.stride_short + 1]
+        x_local = x[:, self.mid_frame - self.stride_short:self.mid_frame + self.stride_short + 1, 0::self.stride_short] # [B, t, n, d]
+        spatial_pos_embed_local = self.spatial_pos_embed[:, 0::self.stride_short]                                       # [B, n, d]
+        temporal_pos_embed_local = self.temporal_pos_embed[:, self.mid_frame - self.stride_short:self.mid_frame + self.stride_short + 1] # [B, t, d]
 
-        print(x_local.shape, spatial_pos_embed_local.shape, temporal_pos_embed_local.shape)
-
-        x_local = self.local_proj(x_local)
         local_st_feat = self.st_trans(x_local, spatial_pos_embed_local, temporal_pos_embed_local) # [B, t, n, d]
+        local_st_feat = self.out_proj(local_st_feat)
 
         return local_st_feat, global_temporal_feat, global_spatial_feat
 

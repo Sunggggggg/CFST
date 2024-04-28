@@ -43,10 +43,10 @@ class CFST(nn.Module):
         ##########################
         # Aggregation
         ##########################
-        self.s_proj = nn.Linear(d_model, d_model*2)
-        self.t_proj = nn.Linear(d_model, d_model*2)
-        self.local_spa_atten = CrossAttention(d_model*2, num_heads=num_head, qk_scale=True, qkv_bias=None)
-        self.local_tem_atten = CrossAttention(d_model*2, num_heads=num_head, qk_scale=True, qkv_bias=None)
+        self.s_proj = nn.Linear(d_model, d_model//2)
+        self.t_proj = nn.Linear(d_model, d_model//2)
+        self.local_spa_atten = CrossAttention(d_model//2, num_heads=num_head, qk_scale=True, qkv_bias=None)
+        self.local_tem_atten = CrossAttention(d_model//2, num_heads=num_head, qk_scale=True, qkv_bias=None)
 
         self.to(device)
 
