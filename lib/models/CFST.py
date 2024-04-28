@@ -4,6 +4,7 @@ import torch.nn as nn
 
 from lib.models.spin import spin_backbone_init
 from lib.models.encoder import STencoder
+from lib.models.trans_operator import CrossAttention
 
 class CFST(nn.Module):
     def __init__(self, 
@@ -42,6 +43,10 @@ class CFST(nn.Module):
         ##########################
         # Aggregation
         ##########################
+        self.s_proj = nn.Linear(d_model, d_model*2)
+        self.t_proj = nn.Linear(d_model, d_model*2)
+        self.local_spa_atten = CrossAttention(d_model*2, num_heads=num_head, qk_scale=True, qkv_bias=None)
+        self.local_tem_atten = CrossAttention(d_model*2, num_heads=num_head, qk_scale=True, qkv_bias=None)
 
         self.to(device)
 
@@ -60,7 +65,16 @@ class CFST(nn.Module):
         global_st_feat = featmap.reshape(B, self.seqlen, self.num_patch, self.d_model)              # [B, T, N, d]
 
         local_st_feat, global_temporal_feat, global_spatial_feat = self.stencoder(global_st_feat, is_train=is_train)
-    
+        proj_spatial_feat = self.s_proj(global_spatial_feat)
+        proj_temporal_feat = self.t_proj(global_temporal_feat)
+
+        local_st_feat = self.local_spa_atten(local_st_feat, proj_spatial_feat)
+        local_st_feat = self.local_tem_atten(local_st_feat, proj_temporal_feat)
+
+        return local_st_feat
+
+        
+        
 
 
 

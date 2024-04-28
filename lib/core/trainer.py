@@ -40,12 +40,9 @@ class Trainer():
             cfg,
             data_loaders,
             generator,
-            motion_discriminator,
             gen_optimizer,
-            dis_motion_optimizer,
             criterion,
             lr_scheduler=None,
-            motion_lr_scheduler=None,
             writer=None,
             performance_type='min',
             val_epoch=5
@@ -159,20 +156,18 @@ class Trainer():
 
             # <======= Feedforward generator and discriminator
             if target_2d and target_3d:
-                inp = torch.cat((target_2d['features'], target_3d['features']), dim=0).cuda()
-                inp_vitpose = torch.cat((target_2d['vitpose_j2d'], target_3d['vitpose_j2d']), dim=0).cuda()
+                pass
             elif target_3d:
-                inp = target_3d['features'].cuda()
-                inp_vitpose = target_3d['vitpose_j2d'].cuda()
+                inp = target_3d['video']
             else:
-                inp = target_2d['features'].cuda()
-                inp_vitpose = target_3d['vitpose_j2d'].cuda()
+                pass
 
             timer['data'] = time.time() - start
             start = time.time()
 
-            preds, mask_ids, pred_mae = self.generator(inp, inp_vitpose, is_train=True)
+            preds = self.generator(inp, is_train=True)
             
+            return 
             timer['forward'] = time.time() - start
             start = time.time()
 

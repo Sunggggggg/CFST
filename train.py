@@ -1,5 +1,6 @@
 import os
 import random
+import pprint
 import torch
 import numpy as np
 import torch.distributed as dist
@@ -9,12 +10,14 @@ from torch.nn import SyncBatchNorm
 from torch.nn.parallel import DistributedDataParallel
 
 from lib.core.trainer import Trainer
+from lib.core.loss import GLoTLoss
 from lib.models.CFST import CFST
 from lib.core.config import parse_args
 from lib.utils.utils import prepare_output_dir, create_logger, setup_for_distributed, get_optimizer
 from lib.dataset.loaders import get_data_loaders
 from lr_scheduler import CosineAnnealingWarmupRestarts
 
+from torch.utils.tensorboard import SummaryWriter
 def main(gpu, args, cfg):
     if cfg.GPUS > 1:
         dist.init_process_group(backend='nccl', init_method='tcp://localhost:1493', world_size=cfg.GPUS, rank=gpu)
@@ -41,10 +44,28 @@ def main(gpu, args, cfg):
     torch.backends.cudnn.deterministic = cfg.CUDNN.DETERMINISTIC
     torch.backends.cudnn.enabled = cfg.CUDNN.ENABLED
 
+    # ========= Tensorboard Writer ========= #
+    if gpu == 0:
+        writer = SummaryWriter(log_dir=cfg.LOGDIR)
+        writer.add_text('config', pprint.pformat(cfg), 0)
+    else:
+        writer = None
+
     # ========= Dataloaders ========= #
     data_loaders = get_data_loaders(cfg, gpu)
     
-    
+    # ========= Compile Loss ========= #
+    loss = GLoTLoss(
+        e_loss_weight=cfg.LOSS.KP_2D_W,
+        e_3d_loss_weight=cfg.LOSS.KP_3D_W,
+        e_pose_loss_weight=cfg.LOSS.POSE_W,
+        e_shape_loss_weight=cfg.LOSS.SHAPE_W,
+        d_motion_loss_weight=cfg.LOSS.D_MOTION_LOSS_W,
+        vel_or_accel_2d_weight = cfg.LOSS.vel_or_accel_2d_weight,
+        vel_or_accel_3d_weight = cfg.LOSS.vel_or_accel_3d_weight,
+        use_accel = cfg.LOSS.use_accel
+    )
+
     # ========= Initialize networks, optimizers and lr_schedulers ========= #
     model = CFST(
         seqlen=cfg.DATASET.SEQLEN,
@@ -81,18 +102,13 @@ def main(gpu, args, cfg):
     Trainer(
         cfg=cfg,
         data_loaders=data_loaders,
-        generator=generator,
-        motion_discriminator=motion_discriminator,
+        model=model,
         criterion=loss,
-        dis_motion_optimizer=dis_motion_optimizer,
         gen_optimizer=gen_optimizer,
         writer=writer,
         lr_scheduler=lr_scheduler,
-        motion_lr_scheduler=motion_lr_scheduler,
         val_epoch=cfg.TRAIN.val_epoch
     ).fit()
-
-    
 
 if __name__ == '__main__':
     cfg, cfg_file, args = parse_args()
