@@ -28,7 +28,7 @@ class CFST(nn.Module):
         self.stride_short = stride_short
         self.mid_frame = seqlen // 2
         self.d_model = d_model 
-        self.num_patch = num_patch = int((224/16/2)**(2))
+        self.num_patch = num_patch = int((224/8/2)**(2))
 
         ##########################
         # STBranch
@@ -101,8 +101,8 @@ class CFST(nn.Module):
         local_st_feat = self.local_spa_atten(local_st_feat, proj_spatial_feat)
         local_st_feat = self.local_tem_atten(local_st_feat, proj_temporal_feat)             # [B, tn, d/2]
         local_st_feat = local_st_feat.reshape(B, self.stride_short*2 + 1, self.d_local, -1) # [B, t, d/2, n]
-        local_t_feat = self.fusion(local_st_feat).squeeze()   # [B, t, d/2]
-        global_t_feat = self.output_proj(local_t_feat)
+        local_t_feat = self.fusion(local_st_feat).squeeze()   # [B, t, 256]
+        global_t_feat = self.output_proj(local_t_feat)        # [B, t, 2048]
 
         ##########################
         # Regressor

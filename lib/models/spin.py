@@ -133,7 +133,7 @@ class HMR(nn.Module):
 
         x = self.layer1(x)         # [B, 256, h/4, w/4]
         x = self.layer2(x)        # [B, 512, h/8, w/8]
-        x = self.layer3(x)        # [B, 1024, h/16, w/16]
+        #x = self.layer3(x)        # [B, 1024, h/16, w/16]
         #x4 = self.layer4(x3)        # [B, 2048, h/32, w/32]
 
         #xf = self.avgpool(x4)
