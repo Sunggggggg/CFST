@@ -1,3 +1,4 @@
+import math
 import os.path as osp 
 import torch
 import torch.nn as nn
@@ -45,7 +46,7 @@ class CFST(nn.Module):
         self.local_spa_atten = CrossAttention(d_local, num_heads=num_head, qk_scale=True, qkv_bias=None)
         self.local_tem_atten = CrossAttention(d_local, num_heads=num_head, qk_scale=True, qkv_bias=None)
 
-        num_local_patch = int(num_patch // stride_short)
+        num_local_patch = math.ceil(num_patch // stride_short)
         self.fusion = nn.Linear(num_local_patch, 1)
 
         ##########################
