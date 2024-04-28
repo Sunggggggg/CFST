@@ -275,13 +275,17 @@ class Regressor(nn.Module):
             pred_cam = self.deccam(xc) + pred_cam
 
         if is_train:
-            next_init_pose = pred_pose.reshape(-1, seq_len, 144)[:, seq_len // 2 - self.stride: seq_len // 2 + self.stride+1]     # [B, 3, ]
-            next_init_shape = pred_shape.reshape(-1, seq_len, 10)[:, seq_len // 2 - self.stride: seq_len // 2 + self.stride+1]
-            next_init_cam = pred_cam.reshape(-1, seq_len, 3)[:, seq_len // 2 - self.stride: seq_len // 2 + self.stride+1]
+            # next_init_pose = pred_pose.reshape(-1, seq_len, 144)[:, seq_len // 2 - self.stride: seq_len // 2 + self.stride+1]     # [B, 3, ]
+            # next_init_shape = pred_shape.reshape(-1, seq_len, 10)[:, seq_len // 2 - self.stride: seq_len // 2 + self.stride+1]
+            # next_init_cam = pred_cam.reshape(-1, seq_len, 3)[:, seq_len // 2 - self.stride: seq_len // 2 + self.stride+1]
+
+            next_init_pose = pred_pose.reshape(-1, seq_len, 144)     # [B, 3, ]
+            next_init_shape = pred_shape.reshape(-1, seq_len, 10)
+            next_init_cam = pred_cam.reshape(-1, seq_len, 3)
         else:
-            next_init_pose = pred_pose.reshape(-1, seq_len, 144)[:, 0][:, None, :]
-            next_init_shape = pred_shape.reshape(-1, seq_len, 10)[:, 0][:, None, :]
-            next_init_cam = pred_cam.reshape(-1, seq_len, 3)[:, 0][:, None, :]
+            next_init_pose = pred_pose.reshape(-1, seq_len, 144)[:, seq_len // 2][:, None, :]
+            next_init_shape = pred_shape.reshape(-1, seq_len, 10)[:, seq_len // 2][:, None, :]
+            next_init_cam = pred_cam.reshape(-1, seq_len, 3)[:, seq_len // 2][:, None, :]
 
         pred_rotmat = rot6d_to_rotmat(pred_pose).view(batch_size, 24, 3, 3)
 

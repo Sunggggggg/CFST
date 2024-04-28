@@ -121,11 +121,11 @@ class CFST(nn.Module):
         else:
             size = self.stride_short * 2 + 1
             for s in smpl_output:
-                s['theta'] = s['theta'].reshape(B, size, -1)           # [B, 3, 10]
-                s['verts'] = s['verts'].reshape(B, size, -1, 3)        # [B, 3, 6980]
-                s['kp_2d'] = s['kp_2d'].reshape(B, size, -1, 2)        # [B, 3, 2]
-                s['kp_3d'] = s['kp_3d'].reshape(B, size, -1, 3)        # [B, 3, 3]
-                s['rotmat'] = s['rotmat'].reshape(B, size, -1, 3, 3)   # [B, 3, 3, 3]
+                s['theta'] = s['theta'].reshape(B, size, -1)           # [B, size, 10]
+                s['verts'] = s['verts'].reshape(B, size, -1, 3)        # [B, size, 6980]
+                s['kp_2d'] = s['kp_2d'].reshape(B, size, -1, 2)        # [B, size, 2]
+                s['kp_3d'] = s['kp_3d'].reshape(B, size, -1, 3)        # [B, size, 3]
+                s['rotmat'] = s['rotmat'].reshape(B, size, -1, 3, 3)   # [B, size, 3, 3]
 
         return smpl_output
 

@@ -104,14 +104,10 @@ class HSCR(nn.Module):
         pred_shape = self.decshape(xc_shape_cam) + pred_shape  
         pred_cam = self.deccam(torch.cat([xc_pose_cam, xc_shape_cam, pred_cam], -1)) + pred_cam
 
-        pred_pose = pred_pose.reshape(-1, 144)      # [B, 24*6]
-        pred_shape = pred_shape.reshape(-1, 10)     # [B, 10]
-        pred_cam = pred_cam.reshape(-1, 3)          # [B, 3]
+        pred_pose = pred_pose.reshape(-1, 144)      # [Bt, 24*6]
+        pred_shape = pred_shape.reshape(-1, 10)     # [Bt, 10]
+        pred_cam = pred_cam.reshape(-1, 3)          # [Bt, 3]
         batch_size = pred_pose.shape[0]
-
-        print(pred_pose.shape)
-        print(pred_shape.shape)
-        print(pred_cam.shape)
 
         out_put = self.get_output(pred_pose, pred_shape, pred_cam, batch_size, is_train, J_regressor)
         return out_put
