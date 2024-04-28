@@ -75,6 +75,7 @@ class CFST(nn.Module):
         proj_spatial_feat = self.s_proj(global_spatial_feat)
         proj_temporal_feat = self.t_proj(global_temporal_feat)
 
+        local_st_feat = torch.flatten(local_st_feat, 1, 2)
         local_st_feat = self.local_spa_atten(local_st_feat, proj_spatial_feat)
         local_st_feat = self.local_tem_atten(local_st_feat, proj_temporal_feat)
 
