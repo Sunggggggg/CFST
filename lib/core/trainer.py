@@ -109,12 +109,8 @@ class Trainer():
         # Single epoch training routine
 
         losses = AverageMeter()
-        kp_2d_loss = AverageMeter()
-        kp_3d_loss = AverageMeter()
         kp_2d_loss_short = AverageMeter()
         kp_3d_loss_short = AverageMeter()
-        accel_loss_mae_2d = AverageMeter()
-        accel_loss_mae_3d = AverageMeter()
         accel_loss_short_2d = AverageMeter()
         accel_loss_short_3d = AverageMeter()
         timer = {
@@ -171,12 +167,9 @@ class Trainer():
             start = time.time()
 
             gen_loss, loss_dict = self.criterion(
-                generator_outputs_mae=pred_mae,
-                generator_outputs_short=preds,
+                preds=preds,
                 data_2d=target_2d,
                 data_3d=target_3d,
-                scores=None, 
-                mask_ids=mask_ids
             )
             
             timer['loss'] = time.time() - start
@@ -193,13 +186,9 @@ class Trainer():
             # total_loss = gen_loss + motion_dis_loss
 
             losses.update(total_loss.item(), inp.size(0))
-            kp_2d_loss.update(loss_dict['loss_kp_2d_mae'].item(), inp.size(0))
-            kp_3d_loss.update(loss_dict['loss_kp_3d_mae'].item(), inp.size(0))
             kp_2d_loss_short.update(loss_dict['loss_kp_2d_short'].item(), inp.size(0))
             kp_3d_loss_short.update(loss_dict['loss_kp_3d_short'].item(), inp.size(0))
 
-            accel_loss_mae_2d.update(loss_dict['loss_accel_2d_mae'].item(), inp.size(0))
-            accel_loss_mae_3d.update(loss_dict['loss_accel_3d_mae'].item(), inp.size(0))
             accel_loss_short_2d.update(loss_dict['loss_accel_2d_short'].item(), inp.size(0))
             accel_loss_short_3d.update(loss_dict['loss_accel_3d_short'].item(), inp.size(0))
 
@@ -208,10 +197,9 @@ class Trainer():
             start = time.time()
 
             summary_string = f'({i + 1}/{self.num_iters_per_epoch}) | Total: {bar.elapsed_td} | ' \
-                             f'ETA: {bar.eta_td:} | loss: {losses.avg:.2f} | 2d: {kp_2d_loss.avg:.2f} ' \
-                             f'| 3d: {kp_3d_loss.avg:.2f} 2d_short: {kp_2d_loss_short.avg:.2f} ' \
-                             f'| 3d_short: {kp_3d_loss_short.avg:.2f} 2d_mae_accel: {accel_loss_mae_2d.avg:.2f} ' \
-                             f'| 3d_mae_accel: {accel_loss_mae_3d.avg:.2f} ' \
+                             f'ETA: {bar.eta_td:} | loss: {losses.avg:.2f} ' \
+                             f'| 2d_short: {kp_2d_loss_short.avg:.2f} ' \
+                             f'| 3d_short: {kp_3d_loss_short.avg:.2f} ' \
                              f'| 2d_short_accel: {accel_loss_short_2d.avg:.2f} ' \
                              f'| 3d_short_accel: {accel_loss_short_3d.avg:.2f} '
 
@@ -261,10 +249,9 @@ class Trainer():
             for i, target in enumerate(self.valid_loader):
                 move_dict_to_device(target, self.device)
                 # <=============
-                inp = target['features']
-                inp_vitpose = target['vitpose_j2d']
+                inp = target['video']
                 batch = len(inp)
-                preds, mask_ids, pred_mae = self.generator(inp ,inp_vitpose, is_train=False, J_regressor=J_regressor)
+                preds, mask_ids, pred_mae = self.generator(inp, is_train=False, J_regressor=J_regressor)
 
                 # convert to 14 keypoint format for evaluation
                 n_kp = preds[-1]['kp_3d'].shape[-2]
@@ -313,6 +300,8 @@ class Trainer():
             # lr decay
             if self.lr_scheduler is not None:
                 self.lr_scheduler.step()
+
+            break
 
         self.writer.close()
 

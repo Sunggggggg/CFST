@@ -126,21 +126,20 @@ class HMR(nn.Module):
 
     def feature_extractor(self, x):
 
-        init_x = x
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
         x = self.maxpool(x)
 
-        x1 = self.layer1(x)         # [B, 256, h/4, w/4]
-        x2 = self.layer2(x1)        # [B, 512, h/8, w/8]
-        #x3 = self.layer3(x2)        # [B, 1024, h/16, w/16]
+        x = self.layer1(x)         # [B, 256, h/4, w/4]
+        x = self.layer2(x)        # [B, 512, h/8, w/8]
+        x = self.layer3(x)        # [B, 1024, h/16, w/16]
         #x4 = self.layer4(x3)        # [B, 2048, h/32, w/32]
 
         #xf = self.avgpool(x4)
         #xf = xf.view(xf.size(0), -1)
 
-        return x2
+        return x
 
     def forward(self, x, init_pose=None, init_shape=None, init_cam=None, n_iter=3, return_features=False):
 
@@ -209,8 +208,9 @@ class HMR(nn.Module):
 
 
 class Regressor(nn.Module):
-    def __init__(self, smpl_mean_params=SMPL_MEAN_PARAMS):
+    def __init__(self, smpl_mean_params=SMPL_MEAN_PARAMS, stride=4):
         super(Regressor, self).__init__()
+        self.stride = stride
 
         npose = 24 * 6
 
@@ -275,9 +275,9 @@ class Regressor(nn.Module):
             pred_cam = self.deccam(xc) + pred_cam
 
         if is_train:
-            next_init_pose = pred_pose.reshape(-1, seq_len, 144)[:, seq_len // 2 - 1: seq_len // 2 + 2]
-            next_init_shape = pred_shape.reshape(-1, seq_len, 10)[:, seq_len // 2 - 1: seq_len // 2 + 2]
-            next_init_cam = pred_cam.reshape(-1, seq_len, 3)[:, seq_len // 2 - 1: seq_len // 2 + 2]
+            next_init_pose = pred_pose.reshape(-1, seq_len, 144)[:, seq_len // 2 - self.stride: seq_len // 2 + self.stride+1]     # [B, 3, ]
+            next_init_shape = pred_shape.reshape(-1, seq_len, 10)[:, seq_len // 2 - self.stride: seq_len // 2 + self.stride+1]
+            next_init_cam = pred_cam.reshape(-1, seq_len, 3)[:, seq_len // 2 - self.stride: seq_len // 2 + self.stride+1]
         else:
             next_init_pose = pred_pose.reshape(-1, seq_len, 144)[:, 0][:, None, :]
             next_init_shape = pred_shape.reshape(-1, seq_len, 10)[:, 0][:, None, :]
@@ -381,8 +381,13 @@ def spin_backbone_init(device):
     spin_backbone.load_state_dict(spin_checkpoint['model'], strict=False)
     spin_backbone.eval()
 
+    regressor = Regressor()
+    regressor.load_state_dict(spin_checkpoint['model'], strict=False)
+
     for param in spin_backbone.parameters():
         param.requires_grad = False
 
     print("SPIN Backbone from : " ,osp.join(BASE_DATA_DIR, 'spin_model_checkpoint.pth.tar'))
-    return spin_backbone.feature_extractor
+    return spin_backbone.feature_extractor, regressor
+
+    

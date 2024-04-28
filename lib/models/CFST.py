@@ -2,15 +2,16 @@ import os.path as osp
 import torch
 import torch.nn as nn
 
-from lib.models.spin import spin_backbone_init
+from lib.models.spin import spin_backbone_init, Regressor
 from lib.models.encoder import STencoder
 from lib.models.trans_operator import CrossAttention
+from lib.models.HSCR import HSCR
 
 class CFST(nn.Module):
     def __init__(self, 
                  seqlen=16,
                  n_layers=3,
-                 d_model=2048,
+                 d_model=1024,
                  num_head=8, 
                  dropout=0., 
                  drop_path_r=0.,
@@ -38,16 +39,25 @@ class CFST(nn.Module):
         ##########################
         # Aggregation
         ##########################
-        self.s_proj = nn.Linear(d_model//2, d_model//2)
-        self.t_proj = nn.Linear(d_model//2, d_model//2)
-        self.local_spa_atten = CrossAttention(d_model//2, num_heads=num_head, qk_scale=True, qkv_bias=None)
-        self.local_tem_atten = CrossAttention(d_model//2, num_heads=num_head, qk_scale=True, qkv_bias=None)
+        self.d_local = d_local = d_model//2
+        self.s_proj = nn.Linear(d_local, d_local)
+        self.t_proj = nn.Linear(d_local, d_local)
+        self.local_spa_atten = CrossAttention(d_local, num_heads=num_head, qk_scale=True, qkv_bias=None)
+        self.local_tem_atten = CrossAttention(d_local, num_heads=num_head, qk_scale=True, qkv_bias=None)
+
+        num_local_patch = int(num_patch // stride_short)
+        self.fusion = nn.Linear(num_local_patch, 1)
+
+        ##########################
+        # KTD Regressor
+        ##########################
+        self.ktd_regressor = HSCR(d_local)
         self.apply(self._init_weights)
 
         ##########################
-        # SPIN Backbone
+        # SPIN Backbone, Regressor (Pre-trained)
         ##########################
-        self.spin_backbone = spin_backbone_init(device)
+        self.spin_backbone, self.regressor = spin_backbone_init(device)
         self.patchfiy = nn.Conv2d(in_channels=d_model, out_channels=d_model, kernel_size=2, stride=2)
 
         self.to(device)
@@ -61,8 +71,7 @@ class CFST(nn.Module):
             nn.init.constant_(m.bias, 0)
             nn.init.constant_(m.weight, 1.0)
 
-
-    def forward(self, x, is_train=False):
+    def forward(self, x, is_train=False, J_regressor=None):
         """
         x : [B, T, 3, H, W]
         """
@@ -88,9 +97,34 @@ class CFST(nn.Module):
 
         local_st_feat = torch.flatten(local_st_feat, 1, 2)
         local_st_feat = self.local_spa_atten(local_st_feat, proj_spatial_feat)
-        local_st_feat = self.local_tem_atten(local_st_feat, proj_temporal_feat)
+        local_st_feat = self.local_tem_atten(local_st_feat, proj_temporal_feat)             # [B, tn, d/2]
+        local_st_feat = local_st_feat.reshape(B, self.stride_short*2 + 1, self.d_local, -1) # [B, t, d/2, n]
+        local_t_feat = self.fusion(local_st_feat).squeeze(-1)   # [B, t, d/2]
 
-        return local_st_feat
+        ##########################
+        # Regressor
+        ##########################
+        _, pred_global = self.regressor(local_t_feat, is_train=is_train, J_regressor=J_regressor, n_iter=3)
+        smpl_output = self.ktd_regressor(local_t_feat, init_pose=pred_global[0], init_shape=pred_global[1], init_cam=pred_global[2], is_train=is_train, J_regressor=J_regressor)
+
+        if not is_train:    # Eval
+            for s in smpl_output:
+                s['theta'] = s['theta'].reshape(B, -1)         
+                s['verts'] = s['verts'].reshape(B, -1, 3)      
+                s['kp_2d'] = s['kp_2d'].reshape(B, -1, 2)
+                s['kp_3d'] = s['kp_3d'].reshape(B, -1, 3)
+                s['rotmat'] = s['rotmat'].reshape(B, -1, 3, 3)
+
+        else:
+            size = self.stride_short * 2 + 1
+            for s in smpl_output:
+                s['theta'] = s['theta'].reshape(B, size, -1)           # [B, 3, 10]
+                s['verts'] = s['verts'].reshape(B, size, -1, 3)        # [B, 3, 6980]
+                s['kp_2d'] = s['kp_2d'].reshape(B, size, -1, 2)        # [B, 3, 2]
+                s['kp_3d'] = s['kp_3d'].reshape(B, size, -1, 3)        # [B, 3, 3]
+                s['rotmat'] = s['rotmat'].reshape(B, size, -1, 3, 3)   # [B, 3, 3, 3]
+
+        return smpl_output
 
         
         
