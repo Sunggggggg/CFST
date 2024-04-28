@@ -165,7 +165,7 @@ class Loss(nn.Module):
         real_3d_theta = reduce(real_3d_theta)
         w_3d = flatten(w_3d)
         w_smpl = flatten(w_smpl)
-        preds = generator_outputs
+        preds = generator_outputs[-1]
         pred_j3d = preds['kp_3d'][sample_2d_count:]
         pred_theta = preds['theta'][sample_2d_count:]
         if mask_ids is not None:
@@ -244,7 +244,7 @@ class Loss(nn.Module):
         w_3d = data_3d['w_3d'].type(torch.bool)
         w_smpl = data_3d['w_smpl'].type(torch.bool)
 
-        stride = preds['kp_3d'].shape[1]
+        stride = preds[-1]['kp_3d'].shape[1]
 
         ##########################
         # Local 
