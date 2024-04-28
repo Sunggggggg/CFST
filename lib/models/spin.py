@@ -374,8 +374,9 @@ def perspective_projection(points, rotation, translation,
 
     return projected_points[:, :, :-1]
 
-def spin_backbone_init():
+def spin_backbone_init(device):
     spin_backbone = HMR(Bottleneck, [3, 4, 6, 3], SMPL_MEAN_PARAMS)
+    spin_backbone = spin_backbone.to(device)
     spin_checkpoint = torch.load(osp.join(BASE_DATA_DIR, 'spin_model_checkpoint.pth.tar')) 
     spin_backbone.load_state_dict(spin_checkpoint['model'], strict=False)
     spin_backbone.eval()

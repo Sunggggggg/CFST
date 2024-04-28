@@ -29,7 +29,7 @@ class CFST(nn.Module):
         ##########################
         # SPIN Backbone
         ##########################
-        self.spin_backbone = spin_backbone_init()
+        self.spin_backbone = spin_backbone_init(device)
         self.patchfiy = nn.Conv2d(d_model, d_model, 2, 2)
         self.num_patch = num_patch = int((224/8/2)**(2))
 
