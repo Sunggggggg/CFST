@@ -58,6 +58,7 @@ class CFST(nn.Module):
         ##########################
         # SPIN Backbone
         ##########################
+        print("Input shape",x.shape)
         B = x.shape[0]
         x = torch.flatten(x, 0, 1)
         featmap = self.spin_backbone(x) # [BT, d, H, W]

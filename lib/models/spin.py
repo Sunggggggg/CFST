@@ -384,4 +384,5 @@ def spin_backbone_init(device):
     for param in spin_backbone.parameters():
         param.requires_grad = False
 
+    print("SPIN Backbone from : " ,osp.join(BASE_DATA_DIR, 'spin_model_checkpoint.pth.tar'))
     return spin_backbone.feature_extractor
