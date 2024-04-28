@@ -81,7 +81,7 @@ def main(gpu, args, cfg):
         device=torch.device(gpu)
     )
     model = SyncBatchNorm.convert_sync_batchnorm(model).to(gpu)
-    model = DistributedDataParallel(model, device_ids=[gpu], broadcast_buffers=False)
+    model = DistributedDataParallel(model, device_ids=[gpu], broadcast_buffers=False, find_unused_parameters=True)
 
     gen_optimizer = get_optimizer(
         model=model,
