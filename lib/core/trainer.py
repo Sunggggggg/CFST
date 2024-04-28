@@ -160,9 +160,7 @@ class Trainer():
             start = time.time()
 
             preds = self.generator(inp, is_train=True)
-            print(preds)
-            
-             
+
             timer['forward'] = time.time() - start
             start = time.time()
 

@@ -251,6 +251,9 @@ class Regressor(nn.Module):
             nn.init.constant_(m.weight, 1.0)
 
     def forward(self, x, init_pose=None, init_shape=None, init_cam=None, n_iter=3, is_train=False, J_regressor=None):
+        """global_t_feat
+        x : [B, t, d]
+        """
         seq_len = x.shape[1]
         x = x.reshape(-1, x.size(-1))   # [BT, d]
         batch_size = x.shape[0]

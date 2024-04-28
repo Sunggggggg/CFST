@@ -255,6 +255,12 @@ class Loss(nn.Module):
         w_3d = data_3d['w_3d'].type(torch.bool)[:, seq_len // 2 - stride: seq_len // 2 + stride+1]
         w_smpl = data_3d['w_smpl'].type(torch.bool)[:, seq_len // 2 - stride: seq_len // 2 + stride+1]
 
+        print(real_2d.shape)
+        print(real_3d.shape)
+        print(real_3d_theta.shape)
+        print(w_3d.shape)
+        print(w_smpl.shape)
+
         loss_kp_2d_short, loss_kp_3d_short, loss_accel_2d_short, loss_accel_3d_short, loss_pose_short, loss_shape_short = self.cal_loss(sample_2d_count, \
             real_2d, real_3d, real_3d_theta, w_3d, w_smpl, reduce, flatten, preds)
         
