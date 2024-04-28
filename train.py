@@ -107,7 +107,8 @@ def main(gpu, args, cfg):
         gen_optimizer=gen_optimizer,
         writer=writer,
         lr_scheduler=lr_scheduler,
-        val_epoch=cfg.TRAIN.val_epoch
+        val_epoch=cfg.TRAIN.val_epoch,
+        device=gpu,
     ).fit()
 
 if __name__ == '__main__':

@@ -22,6 +22,9 @@ import numpy as np
 import os.path as osp
 from progress.bar import Bar
 
+from tqdm import tqdm
+from collections import defaultdict
+from torch.distributed import all_reduce as allreduce
 from lib.core.config import BASE_DATA_DIR
 from lib.utils.utils import move_dict_to_device, AverageMeter, check_data_pararell
 from lib.utils.eval_utils import (
@@ -45,12 +48,12 @@ class Trainer():
             lr_scheduler=None,
             writer=None,
             performance_type='min',
-            val_epoch=5
+            val_epoch=5,
+            device=0
     ):
         dis_motion_update_steps=cfg.TRAIN.MOT_DISCR.UPDATE_STEPS
         start_epoch=cfg.TRAIN.START_EPOCH
         end_epoch=cfg.TRAIN.END_EPOCH
-        device=cfg.DEVICE
         debug=cfg.DEBUG
         logdir=cfg.LOGDIR
         resume=cfg.TRAIN.RESUME
@@ -108,11 +111,8 @@ class Trainer():
     def train(self):
         # Single epoch training routine
 
-        losses = AverageMeter()
-        kp_2d_loss_short = AverageMeter()
-        kp_3d_loss_short = AverageMeter()
-        accel_loss_short_2d = AverageMeter()
-        accel_loss_short_3d = AverageMeter()
+        losses = defaultdict(lambda: AverageMeter())
+
         timer = {
             'data': 0,
             'forward': 0,
@@ -123,13 +123,11 @@ class Trainer():
 
         self.generator.train()
 
-        start = time.time()
+        tqdm_bar = tqdm(range(self.num_iters_per_epoch), desc="[ Training ] ") if self.device==0 else range(self.num_iters_per_epoch)
+        for i in tqdm_bar:
+            summary_string = ''
+            start = time.time()
 
-        summary_string = ''
-
-        bar = Bar(f'Epoch {self.epoch + 1}/{self.end_epoch}', fill='#', max=self.num_iters_per_epoch)
-
-        for i in range(self.num_iters_per_epoch):
             # Dirty solution to reset an iterator
             target_2d = target_3d = None
             if self.train_2d_iter:
@@ -182,54 +180,32 @@ class Trainer():
 
             # <======= Log training info
             total_loss = gen_loss
-            # exclude motion discriminator
-            # total_loss = gen_loss + motion_dis_loss
-
-            losses.update(total_loss.item(), inp.size(0))
-            kp_2d_loss_short.update(loss_dict['loss_kp_2d_short'].item(), inp.size(0))
-            kp_3d_loss_short.update(loss_dict['loss_kp_3d_short'].item(), inp.size(0))
-
-            accel_loss_short_2d.update(loss_dict['loss_accel_2d_short'].item(), inp.size(0))
-            accel_loss_short_3d.update(loss_dict['loss_accel_3d_short'].item(), inp.size(0))
+            total_loss, total_instance = self.sync_data(total_loss)
+            self.loss_meter_update(losses, total_loss.item(), loss_dict, total_instance)
 
             timer['backward'] = time.time() - start
             timer['batch'] = timer['data'] + timer['forward'] + timer['loss'] + timer['backward']
-            start = time.time()
 
-            summary_string = f'({i + 1}/{self.num_iters_per_epoch}) | Total: {bar.elapsed_td} | ' \
-                             f'ETA: {bar.eta_td:} | loss: {losses.avg:.2f} ' \
-                             f'| 2d_short: {kp_2d_loss_short.avg:.2f} ' \
-                             f'| 3d_short: {kp_3d_loss_short.avg:.2f} ' \
-                             f'| 2d_short_accel: {accel_loss_short_2d.avg:.2f} ' \
-                             f'| 3d_short_accel: {accel_loss_short_3d.avg:.2f} '
+            summary_string = f'[ Training ] epoch: ({self.epoch + 1}/{self.end_epoch})'
 
-            for k, v in loss_dict.items():
-                summary_string += f' | {k}: {v:.3f}'
-                self.writer.add_scalar('train_loss/'+k, v, global_step=self.train_global_step)
+            for k, v in losses.items():
+                summary_string += f' | {k}: {v.avg:.2f}'
+                if self.writer:
+                    self.writer.add_scalar('train_loss/'+k, v.avg, global_step=self.train_global_step)
+
             for k,v in timer.items():
                 summary_string += f' | {k}: {v:.2f}'
 
-            self.writer.add_scalar('train_loss/loss', total_loss.item(), global_step=self.train_global_step)
-            if self.debug:
-                print('==== Visualize ====')
-                from lib.utils.vis import batch_visualize_vid_preds
-                video = target_3d['video']
-                dataset = 'spin'
-                vid_tensor = batch_visualize_vid_preds(video, preds[-1], target_3d.copy(),
-                                                       vis_hmr=False, dataset=dataset)
-                self.writer.add_video('train-video', vid_tensor, global_step=self.train_global_step, fps=10)
+            if self.writer:
+                self.writer.add_scalar('train_loss/loss', total_loss.item(), global_step=self.train_global_step)
+
+            if self.device == 0:
+                tqdm_bar.set_description(summary_string)
 
             self.train_global_step += 1
-            bar.suffix = summary_string
-            bar.next()
 
             if torch.isnan(total_loss):
                 exit('Nan value in loss, exiting!...')
-            # =======>
-
-        bar.finish()
-
-        logger.info(summary_string)
 
     def validate(self):
         self.generator.eval()
@@ -251,7 +227,7 @@ class Trainer():
                 # <=============
                 inp = target['video']
                 batch = len(inp)
-                preds, mask_ids, pred_mae = self.generator(inp, is_train=False, J_regressor=J_regressor)
+                preds = self.generator(inp, is_train=False, J_regressor=J_regressor)
 
                 # convert to 14 keypoint format for evaluation
                 n_kp = preds[-1]['kp_3d'].shape[-2]
@@ -390,3 +366,32 @@ class Trainer():
             self.writer.add_scalar(f'error/{k}', v, global_step=self.epoch)
         # return accel_err
         return pa_mpjpe
+    
+
+    def sync_data(self, item, num_item=1):
+        # Gather data computed on each rank and average them
+        if not torch.is_tensor(item):
+            item = torch.tensor(item*num_item).float().to(self.device)
+            return_tensor = False
+        else:
+            item = item*num_item
+            return_tensor = True
+
+        if not torch.is_tensor(num_item):
+            num_item = torch.tensor(num_item).float().to(self.device)
+        allreduce(item) # Sum of data
+        allreduce(num_item) # Total number of data     
+
+        item_avg = item.item()
+        num_total = num_item.item()
+        item_avg /= max(num_total, 1)
+
+        if return_tensor:
+            item_avg = torch.tensor(item_avg).float().to(self.device)
+        return item_avg, num_total
+    
+    def loss_meter_update(self, loss_meter, total_loss, loss_dict, num):
+        loss_meter['loss'].update(total_loss, num)
+        for key, loss in loss_dict.items():
+            loss_meter[key].update(loss, num)
+        return loss_meter
