@@ -208,6 +208,7 @@ class STencoder(nn.Module) :
                             mlp_hidden_dim=embed_dim*2, head=num_head, 
                             drop_rate=dropout, drop_path_rate=drop_path_r, 
                             attn_drop_rate=atten_drop)
+        
         self.out_proj = nn.Linear(embed_dim, embed_dim//2)
         
 

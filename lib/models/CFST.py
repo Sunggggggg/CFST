@@ -72,6 +72,7 @@ class CFST(nn.Module):
         ##########################
         # Aggregation
         ##########################
+        print(local_st_feat.shape, global_temporal_feat.shape, global_spatial_feat.shape)
         proj_spatial_feat = self.s_proj(global_spatial_feat)
         proj_temporal_feat = self.t_proj(global_temporal_feat)
 
