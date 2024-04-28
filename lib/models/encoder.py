@@ -10,12 +10,12 @@ from lib.models.pooling import *
 
 class MaskTransformer(nn.Module):
     def __init__(self, depth=3, embed_dim=512, mlp_hidden_dim=1024, head=8, 
-                 drop_rate=0.1, drop_path_rate=0.2, attn_drop_rate=0., length=16) :
+                 drop_rate=0.1, drop_path_rate=0.2, attn_drop_rate=0., length=16, device=torch.device("cuda")) :
         super().__init__()
         mean_params = np.load(SMPL_MEAN_PARAMS)
-        self.init_pose = torch.from_numpy(mean_params['pose'][:]).unsqueeze(0)
-        self.init_shape = torch.from_numpy(mean_params['shape'][:].astype('float32')).unsqueeze(0)
-        self.init_cam = torch.from_numpy(mean_params['cam']).unsqueeze(0)
+        self.init_pose = torch.from_numpy(mean_params['pose'][:]).unsqueeze(0).to(device)
+        self.init_shape = torch.from_numpy(mean_params['shape'][:].astype('float32')).unsqueeze(0).to(device)
+        self.init_cam = torch.from_numpy(mean_params['cam']).unsqueeze(0).to(device)
 
         self.mask_token_mlp = nn.Sequential(
             nn.Linear(24 * 6 + 13, 256),
@@ -181,6 +181,7 @@ class STencoder(nn.Module) :
                  drop_path_r=0.,
                  atten_drop=0.,
                  mask_ratio=0.,
+                 device=torch.device("cuda")
                  ):
         super().__init__()
         self.mid_frame = int(seqlen // 2)
@@ -193,12 +194,12 @@ class STencoder(nn.Module) :
         self.temporal_trans = MaskTransformer(depth=n_layers, embed_dim=embed_dim, 
                             mlp_hidden_dim=embed_dim*2, head=num_head, 
                             drop_rate=dropout, drop_path_rate=drop_path_r, 
-                            attn_drop_rate=atten_drop, length=seqlen)
+                            attn_drop_rate=atten_drop, length=seqlen, device=device)
         
         self.spatial_trans = MaskTransformer(depth=n_layers, embed_dim=embed_dim, 
                             mlp_hidden_dim=embed_dim*2, head=num_head, 
                             drop_rate=dropout, drop_path_rate=drop_path_r, 
-                            attn_drop_rate=atten_drop, length=hw)
+                            attn_drop_rate=atten_drop, length=hw, device=device)
         
 
         local_dim = embed_dim * 2

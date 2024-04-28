@@ -38,7 +38,7 @@ class CFST(nn.Module):
         ##########################
         self.stencoder = STencoder(seqlen=seqlen, hw=num_patch, embed_dim=d_model, stride_short=stride_short,
                               n_layers=n_layers, short_n_layers=short_n_layers, num_head=num_head, dropout=dropout, drop_path_r=drop_path_r, 
-                              atten_drop=atten_drop, mask_ratio=mask_ratio)
+                              atten_drop=atten_drop, mask_ratio=mask_ratio, device=device)
         
         ##########################
         # Aggregation
@@ -64,7 +64,14 @@ class CFST(nn.Module):
         global_st_feat = self.patchfiy(feat_map).flatten(-2).permute(0, -1, 1)       
         global_st_feat = global_st_feat.reshape(B, self.seqlen, self.num_patch, self.d_model)              # [B, T, N, d]
 
+        ##########################
+        # STBranch
+        ##########################
         local_st_feat, global_temporal_feat, global_spatial_feat = self.stencoder(global_st_feat, is_train=is_train)
+
+        ##########################
+        # Aggregation
+        ##########################
         proj_spatial_feat = self.s_proj(global_spatial_feat)
         proj_temporal_feat = self.t_proj(global_temporal_feat)
 
