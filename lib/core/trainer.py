@@ -204,6 +204,10 @@ class Trainer():
 
             self.train_global_step += 1
 
+            del preds
+            del target_2d
+            del target_3d
+            
             if torch.isnan(total_loss):
                 exit('Nan value in loss, exiting!...')
 
@@ -251,6 +255,8 @@ class Trainer():
                 bar.suffix = summary_string
                 bar.next()
 
+                del preds
+
         bar.finish()
 
         logger.info(summary_string)
@@ -259,10 +265,12 @@ class Trainer():
 
         for epoch in range(self.start_epoch, self.end_epoch):
             self.epoch = epoch
-            self.train()
+            
             self.validate()
-            #if epoch + 1 >= self.val_epoch:
             performance = self.evaluate()
+            self.train()
+            #if epoch + 1 >= self.val_epoch:
+            
 
             # log the learning rate
             for param_group in self.gen_optimizer.param_groups:
