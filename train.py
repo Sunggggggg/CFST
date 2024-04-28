@@ -10,7 +10,7 @@ from torch.nn import SyncBatchNorm
 from torch.nn.parallel import DistributedDataParallel
 
 from lib.core.trainer import Trainer
-from lib.core.loss import GLoTLoss
+from lib.core.loss import Loss
 from lib.models.CFST import CFST
 from lib.core.config import parse_args
 from lib.utils.utils import prepare_output_dir, create_logger, setup_for_distributed, get_optimizer
@@ -55,7 +55,7 @@ def main(gpu, args, cfg):
     data_loaders = get_data_loaders(cfg, gpu)
     
     # ========= Compile Loss ========= #
-    loss = GLoTLoss(
+    loss = Loss(
         e_loss_weight=cfg.LOSS.KP_2D_W,
         e_3d_loss_weight=cfg.LOSS.KP_3D_W,
         e_pose_loss_weight=cfg.LOSS.POSE_W,
