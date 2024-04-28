@@ -30,7 +30,7 @@ class CFST(nn.Module):
         # SPIN Backbone
         ##########################
         self.spin_backbone = spin_backbone_init(device)
-        self.patchfiy = nn.Conv2d(d_model, d_model, 2, 2)
+        self.patchfiy = nn.Conv2d(in_channels=d_model, out_channels=d_model, kernel_size=2, stride=2)
         self.num_patch = num_patch = int((224/8/2)**(2))
 
         ##########################
@@ -58,11 +58,9 @@ class CFST(nn.Module):
         ##########################
         # SPIN Backbone
         ##########################
-        print("Input shape", x.shape)
         B = x.shape[0]
         x = torch.flatten(x, 0, 1)
         featmap = self.spin_backbone(x) # [BT, d, H, W]
-        print("featmap shape", featmap.shape)
         global_st_feat = self.patchfiy(featmap).flatten(-2).permute(0, -1, 1)           
         global_st_feat = featmap.reshape(B, self.seqlen, self.num_patch, self.d_model)              # [B, T, N, d]
 

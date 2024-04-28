@@ -140,7 +140,7 @@ class HMR(nn.Module):
         #xf = self.avgpool(x4)
         #xf = xf.view(xf.size(0), -1)
 
-        return x1
+        return x2
 
     def forward(self, x, init_pose=None, init_shape=None, init_cam=None, n_iter=3, return_features=False):
 
