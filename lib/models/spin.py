@@ -214,7 +214,7 @@ class Regressor(nn.Module):
 
         npose = 24 * 6
 
-        self.fc1 = nn.Linear(512 * 4 + npose + 13, 1024)
+        self.fc1 = nn.Linear(512 * 4 + npose + 10 + 3, 1024)
         self.drop1 = nn.Dropout()
         self.fc2 = nn.Linear(1024, 1024)
         self.drop2 = nn.Dropout()
@@ -252,14 +252,14 @@ class Regressor(nn.Module):
 
     def forward(self, x, init_pose=None, init_shape=None, init_cam=None, n_iter=3, is_train=False, J_regressor=None):
         seq_len = x.shape[1]
-        x = x.reshape(-1, x.size(-1))
+        x = x.reshape(-1, x.size(-1))   # [BT, d]
         batch_size = x.shape[0]
         if init_pose is None:
-            init_pose = self.init_pose.expand(batch_size, -1)
+            init_pose = self.init_pose.expand(batch_size, -1)       #[BT, 24*6]
         if init_shape is None:
-            init_shape = self.init_shape.expand(batch_size, -1)
+            init_shape = self.init_shape.expand(batch_size, -1)     #[BT, 10]
         if init_cam is None:
-            init_cam = self.init_cam.expand(batch_size, -1)
+            init_cam = self.init_cam.expand(batch_size, -1)         #[BT, 3]
 
         pred_pose = init_pose
         pred_shape = init_shape

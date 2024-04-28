@@ -48,6 +48,7 @@ class CFST(nn.Module):
 
         num_local_patch = math.ceil(num_patch / stride_short)
         self.fusion = nn.Linear(num_local_patch, 1)
+        self.output_proj = nn.Linear(d_local, 2048)
 
         ##########################
         # KTD Regressor
@@ -101,6 +102,7 @@ class CFST(nn.Module):
         local_st_feat = self.local_tem_atten(local_st_feat, proj_temporal_feat)             # [B, tn, d/2]
         local_st_feat = local_st_feat.reshape(B, self.stride_short*2 + 1, self.d_local, -1) # [B, t, d/2, n]
         local_t_feat = self.fusion(local_st_feat).squeeze()   # [B, t, d/2]
+        local_t_feat = self.output_proj(local_t_feat)
 
         ##########################
         # Regressor
