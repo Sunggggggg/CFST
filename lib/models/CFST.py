@@ -60,9 +60,9 @@ class CFST(nn.Module):
         ##########################
         B = x.shape[0]
         x = torch.flatten(x, 0, 1)
-        featmap = self.spin_backbone(x) # [BT, d, H, W]
-        global_st_feat = self.patchfiy(featmap).flatten(-2).permute(0, -1, 1)           
-        global_st_feat = featmap.reshape(B, self.seqlen, self.num_patch, self.d_model)              # [B, T, N, d]
+        feat_map = self.spin_backbone(x) # [BT, d, H, W]
+        global_st_feat = self.patchfiy(feat_map).flatten(-2).permute(0, -1, 1)       
+        global_st_feat = global_st_feat.reshape(B, self.seqlen, self.num_patch, self.d_model)              # [B, T, N, d]
 
         local_st_feat, global_temporal_feat, global_spatial_feat = self.stencoder(global_st_feat, is_train=is_train)
         proj_spatial_feat = self.s_proj(global_spatial_feat)
