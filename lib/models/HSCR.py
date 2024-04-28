@@ -109,6 +109,10 @@ class HSCR(nn.Module):
         pred_cam = pred_cam.reshape(-1, 3)          # [B, 3]
         batch_size = pred_pose.shape[0]
 
+        print(pred_pose.shape)
+        print(pred_shape.shape)
+        print(pred_cam.shape)
+
         out_put = self.get_output(pred_pose, pred_shape, pred_cam, batch_size, is_train, J_regressor)
         return out_put
 
