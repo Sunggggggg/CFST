@@ -102,7 +102,7 @@ def main(gpu, args, cfg):
     Trainer(
         cfg=cfg,
         data_loaders=data_loaders,
-        model=model,
+        generator=model,
         criterion=loss,
         gen_optimizer=gen_optimizer,
         writer=writer,
