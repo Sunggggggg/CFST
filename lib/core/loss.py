@@ -245,6 +245,8 @@ class Loss(nn.Module):
         w_smpl = data_3d['w_smpl'].type(torch.bool)
 
         stride = preds[-1]['kp_3d'].shape[1]
+        for k, v in preds[-1] :
+            print(k, v.shape)
 
         ##########################
         # Local 
