@@ -165,7 +165,7 @@ class Loss(nn.Module):
         real_3d_theta = reduce(real_3d_theta)
         w_3d = flatten(w_3d)
         w_smpl = flatten(w_smpl)
-        preds = generator_outputs[-1]
+        preds = generator_outputs
         pred_j3d = preds['kp_3d'][sample_2d_count:]
         pred_theta = preds['theta'][sample_2d_count:]
         if mask_ids is not None:
@@ -244,14 +244,16 @@ class Loss(nn.Module):
         w_3d = data_3d['w_3d'].type(torch.bool)
         w_smpl = data_3d['w_smpl'].type(torch.bool)
 
+        stride = preds['kp_3d'].shape[1]
+
         ##########################
         # Local 
         ##########################
-        real_2d = real_2d[:, seq_len // 2 - 1: seq_len // 2 + 2]
-        real_3d = data_3d['kp_3d'][:, seq_len // 2 - 1: seq_len // 2 + 2]
-        real_3d_theta = data_3d['theta'][:, seq_len // 2 - 1: seq_len // 2 + 2]
-        w_3d = data_3d['w_3d'].type(torch.bool)[:, seq_len // 2 - 1: seq_len // 2 + 2]
-        w_smpl = data_3d['w_smpl'].type(torch.bool)[:, seq_len // 2 - 1: seq_len // 2 + 2]
+        real_2d = real_2d[:, seq_len // 2 - stride: seq_len // 2 + stride+1]
+        real_3d = data_3d['kp_3d'][:, seq_len // 2 - stride: seq_len // 2 + stride+1]
+        real_3d_theta = data_3d['theta'][:, seq_len // 2 - stride: seq_len // 2 + stride+1]
+        w_3d = data_3d['w_3d'].type(torch.bool)[:, seq_len // 2 - stride: seq_len // 2 + stride+1]
+        w_smpl = data_3d['w_smpl'].type(torch.bool)[:, seq_len // 2 - stride: seq_len // 2 + stride+1]
 
         loss_kp_2d_short, loss_kp_3d_short, loss_accel_2d_short, loss_accel_3d_short, loss_pose_short, loss_shape_short = self.cal_loss(sample_2d_count, \
             real_2d, real_3d, real_3d_theta, w_3d, w_smpl, reduce, flatten, preds)
