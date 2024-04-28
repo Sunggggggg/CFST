@@ -261,8 +261,8 @@ class Trainer():
             self.epoch = epoch
             self.train()
             self.validate()
-            if epoch + 1 >= self.val_epoch:
-                performance = self.evaluate()
+            #if epoch + 1 >= self.val_epoch:
+            performance = self.evaluate()
 
             # log the learning rate
             for param_group in self.gen_optimizer.param_groups:
