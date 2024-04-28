@@ -110,9 +110,9 @@ class CFST(nn.Module):
         _, pred_global = self.regressor(global_t_feat, is_train=is_train, J_regressor=J_regressor, n_iter=3)
 
         if not is_train:
-            feature = local_t_feat
-        else:
             feature = local_t_feat[:, self.mid_frame][:, None, :] 
+        else:
+            feature = local_t_feat
         smpl_output = self.ktd_regressor(feature, init_pose=pred_global[0], init_shape=pred_global[1], init_cam=pred_global[2], is_train=is_train, J_regressor=J_regressor)
 
         if not is_train:    # Eval
