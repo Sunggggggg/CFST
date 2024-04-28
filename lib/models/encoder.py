@@ -156,7 +156,7 @@ class STtransformer(nn.Module):
         x : [B, t, n, d]
         """
         b, t, n, c = x.shape
-        s = self.SpaTemHead(x, spatial_pos, temporal_pos)
+        x = self.SpaTemHead(x, spatial_pos, temporal_pos)
 
         for i in range(1, self.depth):
             SpaAtten = self.SpatialBlocks[i]
