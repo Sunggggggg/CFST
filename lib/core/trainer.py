@@ -258,7 +258,6 @@ class Trainer():
                 del preds
 
         bar.finish()
-
         logger.info(summary_string)
 
     def fit(self):
