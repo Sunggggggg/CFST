@@ -264,10 +264,19 @@ class Trainer():
 
         for epoch in range(self.start_epoch, self.end_epoch):
             self.epoch = epoch
-            
+            if self.device == 0:
+                save_dict = {
+                        'epoch': epoch,
+                        'gen_state_dict': self.generator.module.state_dict(),
+                        'gen_optimizer': self.gen_optimizer.state_dict(),
+                    }
+
+                filename = osp.join('/mnt/SKY/CFST/checkpoint.pth.tar')
+                torch.save(save_dict, filename)
+
             self.train()
             
-            if self.device == 0:
+            
                 # if epoch + 1 >= self.val_epoch :
                 #     self.validate()
                 #     performance = self.evaluate()
@@ -280,14 +289,7 @@ class Trainer():
                 # if epoch + 1 >= self.val_epoch:
                 #     logger.info(f'Epoch {epoch+1} performance: {performance:.4f}')
                 #     self.save_model(performance, epoch)
-                save_dict = {
-                    'epoch': epoch,
-                    'gen_state_dict': self.generator.state_dict(),
-                    'gen_optimizer': self.gen_optimizer.state_dict(),
-                }
-
-                filename = osp.join(self.logdir, f'checkpoint.pth.tar')
-                torch.save(save_dict, filename)
+                
 
             # lr decay
             if self.lr_scheduler is not None:
