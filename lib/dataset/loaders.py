@@ -22,13 +22,13 @@ def get_data_loaders(cfg, gpu):
         train_3d_dataset_names = cfg.TRAIN.DATASETS_3D
         data_3d_batch_size = cfg.TRAIN.BATCH_SIZE
         train_3d_db = get_3d_datasets(train_3d_dataset_names)
-        #train_3d_sampler = DistributedSampler(train_3d_db, rank=gpu, num_replicas=cfg.GPUS)
+        train_3d_sampler = DistributedSampler(train_3d_db, rank=gpu, num_replicas=cfg.GPUS)
 
         train_3d_loader = DataLoader(
             dataset=train_3d_db,
             batch_size=data_3d_batch_size,
             num_workers=cfg.NUM_WORKERS,
-            #sampler=train_3d_sampler,
+            sampler=train_3d_sampler,
             pin_memory=True
         )
 
