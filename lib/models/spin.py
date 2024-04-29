@@ -286,11 +286,8 @@ class Regressor(nn.Module):
             next_init_shape = pred_shape.reshape(-1, seq_len, 10)
             next_init_cam = pred_cam.reshape(-1, seq_len, 3)
         else:
-            next_init_pose = pred_pose.reshape(-1, seq_len, 144)     # [B, 3, ]
-            next_init_shape = pred_shape.reshape(-1, seq_len, 10)
-            next_init_cam = pred_cam.reshape(-1, seq_len, 3)
-            
-            print(pred_pose)
+            print(B, seq_len)
+            print(pred_pose.shape)
             next_init_pose = pred_pose.reshape(B, seq_len, 144)[:, seq_len // 2][:, None, :]       # [8*9, 144]
             next_init_shape = pred_shape.reshape(B, seq_len, 10)[:, seq_len // 2][:, None, :]      # [8*9, 10]
             next_init_cam = pred_cam.reshape(B, seq_len, 3)[:, seq_len // 2][:, None, :]           # [8*9, 3]
