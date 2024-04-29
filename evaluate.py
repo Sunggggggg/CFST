@@ -116,7 +116,7 @@ if __name__ == "__main__":
 
     model.regressor.smpl = SMPL(
         SMPL_MODEL_DIR,
-        batch_size=64,
+        batch_size=8,
         create_transl=False,
         gender=gender
     ).to(device)
