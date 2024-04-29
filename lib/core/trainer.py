@@ -188,7 +188,7 @@ class Trainer():
             timer['batch'] = timer['data'] + timer['forward'] + timer['loss'] + timer['backward']
 
             if self.device == 0:
-                summary_string = f'[ Training ] epoch: ({self.epoch + 1}/{self.end_epoch})'
+                summary_string = f'({self.epoch + 1}/{self.end_epoch})'
 
                 for k, v in losses.items():
                     summary_string += f' | {k}: {v.avg:.2f}'
