@@ -257,8 +257,6 @@ class Trainer():
                 bar.suffix = summary_string
                 bar.next()
 
-                
-
         bar.finish()
         logger.info(summary_string)
 
