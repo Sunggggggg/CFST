@@ -20,24 +20,6 @@ from lr_scheduler import CosineAnnealingWarmupRestarts
 
 from torch.utils.tensorboard import SummaryWriter
 def main(gpu, args, cfg):
-    # ========= Pytorch Setting & Distributed Initialization ========= #
-    if "LOCAL_RANK" in os.environ: # for torch.distributed.launch
-        logger.info("Starting training through torch.distributed.launch...")
-        world_size = int(os.environ["WORLD_SIZE"])
-        local_rank = int(os.environ["LOCAL_RANK"])
-        rank = int(os.environ["RANK"])
-    elif 'SLURM_PROCID' in os.environ: # for slurm scheduler
-        logger.info("Starting training through slurm scheduler...")
-        world_size = int(os.environ["SLURM_NPROCS"])
-        local_rank = int(os.environ['SLURM_LOCALID'])
-        rank = int(os.environ['SLURM_PROCID'])
-        os.environ['MASTER_ADDR'] = subprocess.check_output("scontrol show hostnames $SLURM_JOB_NODELIST", shell=True).decode("ascii").split("\n")[0]
-    else:
-        raise NotImplementedError("Invalid launch.")
-
-    torch.cuda.set_device(local_rank)
-    logger.info(f"Initializing process group... World_size: {world_size}, Rank: {rank}, GPU: {local_rank}, Master_addr: {os.environ['MASTER_ADDR']}")
-
     if cfg.GPUS > 1:
         dist.init_process_group(backend='nccl', init_method='tcp://localhost:1493', world_size=cfg.GPUS, rank=gpu)
 
