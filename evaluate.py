@@ -187,10 +187,12 @@ if __name__ == "__main__":
         pbar = tqdm(dataset_data.keys())
         for seq_name in pbar:
             curr_imgname = dataset_data[seq_name]['imgname']
-            print(curr_imgname)
-            curr_bbox = dataset_data[seq_name]['bbox']   
-            curr_img = get_single_image_crop(osp.join('/mnt/SKY', curr_imgname), None, bbox, scale=1.2)
-            print(curr_img.shape)
+            curr_bbox = dataset_data[seq_name]['bbox']
+
+            curr_video = torch.cat(
+                [get_single_image_crop(osp.join('/mnt/SKY', image), None, bbox, scale=1.2).unsqueeze(0) for idx, (image, bbox) in
+                 enumerate(zip(curr_imgname, curr_bbox))], dim=0
+            )
             vid_names = dataset_data[seq_name]['vid_name']
 
             chunk_idxes = split_into_chunks_test(vid_names, seqlen=seqlen, stride=stride, is_train=False, match_vibe=False)  # match vibe eval number of poses
@@ -203,11 +205,11 @@ if __name__ == "__main__":
                 if (curr_idx + 8) < len(chunk_idxes):
                     for ii in range(8):
                         seq_select = get_sequence(chunk_idxes[curr_idx+ii][0], chunk_idxes[curr_idx+ii][1])
-                        input_img.append(curr_img[None, seq_select, :])
+                        input_img.append(curr_video[None, seq_select, :])
                 else:
                     for ii in range(curr_idx, len(chunk_idxes)):
                         seq_select = get_sequence(chunk_idxes[ii][0], chunk_idxes[ii][1])
-                        input_img.append(curr_img[None, seq_select, :])
+                        input_img.append(curr_video[None, seq_select, :])
 
                 input_img = torch.cat(input_img, dim=0)
                 preds = model(input_img, J_regressor=J_regressor, is_train=False)
