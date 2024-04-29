@@ -5,7 +5,7 @@ LOGDIR: ''
 DEVICE: 'cuda'
 EXP_NAME: 'STformer'
 OUTPUT_DIR: './experiments' # your path
-NUM_WORKERS: 8
+NUM_WORKERS: 6
 SEED_VALUE: 1
 GPUS: 3 # #of available
 DATASET:
