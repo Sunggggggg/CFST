@@ -118,7 +118,7 @@ if __name__ == "__main__":
         batch_size=64,
         create_transl=False,
         gender=gender
-    ).cuda()
+    ).to(device)
     dtype = torch.float
     J_regressor = torch.from_numpy(np.load(osp.join(BASE_DATA_DIR, 'J_regressor_h36m.npy'))).float()
 
