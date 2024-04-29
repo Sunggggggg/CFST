@@ -186,8 +186,7 @@ if __name__ == "__main__":
         tot_num_pose = 0
         pbar = tqdm(dataset_data.keys())
         for seq_name in pbar:
-            curr_imgname = dataset_data[seq_name]['imgname']   
-            print(curr_imgname.shape)
+            curr_imgname = dataset_data[seq_name]['video']   
 
             num_frames = curr_imgname.shape[0]
             vid_names = dataset_data[seq_name]['vid_name']
@@ -202,8 +201,6 @@ if __name__ == "__main__":
                 if (curr_idx + 8) < len(chunk_idxes):
                     for ii in range(8):
                         seq_select = get_sequence(chunk_idxes[curr_idx+ii][0], chunk_idxes[curr_idx+ii][1])
-                        print(curr_imgname.shape)
-
                         input_img.append(curr_imgname[None, seq_select, :])
                 else:
                     for ii in range(curr_idx, len(chunk_idxes)):
