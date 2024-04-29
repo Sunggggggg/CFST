@@ -274,15 +274,26 @@ class Trainer():
             
             self.train()
             
-            self.validate()
-            performance = self.evaluate()
-            logger.info(f'Epoch {epoch+1} performance: {performance:.4f}')
-            self.save_model(performance, epoch)
+            if epoch % 10 == 0:
+                self.validate()
+                performance = self.evaluate()
+                logger.info(f'Epoch {epoch+1} performance: {performance:.4f}')
+                #self.save_model(performance, epoch)
 
-            # log the learning rate
-            for param_group in self.gen_optimizer.param_groups:
-                print(f'Learning rate {param_group["lr"]}')
-                self.writer.add_scalar('lr/gen_lr', param_group['lr'], global_step=self.epoch)
+                save_dict = {
+                    'epoch': epoch,
+                    'gen_state_dict': self.generator.state_dict(),
+                    'performance': performance,
+                    'gen_optimizer': self.gen_optimizer.state_dict(),
+                }
+
+                filename = osp.join(self.logdir, f'checkpoint.pth.tar')
+                torch.save(save_dict, filename)
+    
+                # log the learning rate
+                for param_group in self.gen_optimizer.param_groups:
+                    print(f'Learning rate {param_group["lr"]}')
+                    self.writer.add_scalar('lr/gen_lr', param_group['lr'], global_step=self.epoch)
                 
             # lr decay
             if self.lr_scheduler is not None:
