@@ -15,6 +15,7 @@ def get_data_loaders(cfg, gpu):
             db = eval(dataset_name)(load_opt=cfg.TITLE, set='train', seqlen=cfg.DATASET.SEQLEN, overlap=overlap, debug=cfg.DEBUG)
             datasets.append(db)
         return ConcatDataset(datasets)
+    # ===== Train dataset (2D dataset)===== #
 
     # ===== Train dataset (3D dataset)===== #
     if cfg.TRAIN.DATASETS_3D :
@@ -27,7 +28,8 @@ def get_data_loaders(cfg, gpu):
             dataset=train_3d_db,
             batch_size=data_3d_batch_size,
             num_workers=cfg.NUM_WORKERS,
-            sampler=train_3d_sampler
+            sampler=train_3d_sampler,
+            pin_memory=True
         )
 
     # ===== Evaluation dataset ===== #
@@ -39,7 +41,8 @@ def get_data_loaders(cfg, gpu):
         dataset=valid_db,
         batch_size=data_3d_batch_size,
         num_workers=cfg.NUM_WORKERS,
-        sampler=valid_sampler
+        sampler=valid_sampler,
+        pin_memory=True
     )
 
     return None, train_3d_loader, valid_loader
