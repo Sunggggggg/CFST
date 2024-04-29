@@ -77,6 +77,7 @@ if __name__ == "__main__":
         if torch.cuda.is_available()
         else torch.device("cpu")
     )
+    torch.set_default_device(device)
 
     """ Evaluation Options """
     target_dataset = args.dataset  # 'mpii3d' '3dpw' 'h36m'
