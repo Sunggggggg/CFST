@@ -3,7 +3,7 @@ DEBUG: false
 DEBUG_FREQ: 5
 LOGDIR: ''
 DEVICE: 'cuda'
-EXP_NAME: 'GLoT_ViTPose_Refine_Replay'
+EXP_NAME: 'STformer'
 OUTPUT_DIR: './experiments' # your path
 NUM_WORKERS: 4
 SEED_VALUE: 1
