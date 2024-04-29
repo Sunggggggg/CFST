@@ -193,7 +193,7 @@ if __name__ == "__main__":
             curr_video = torch.cat(
                 [get_single_image_crop(osp.join('/mnt/SKY', image), None, bbox, scale=1.2).unsqueeze(0) for idx, (image, bbox) in
                  enumerate(zip(curr_imgname, curr_bbox))], dim=0
-            )
+            ).to(device)
             vid_names = dataset_data[seq_name]['vid_name']
 
             chunk_idxes = split_into_chunks_test(vid_names, seqlen=seqlen, stride=stride, is_train=False, match_vibe=False)  # match vibe eval number of poses
