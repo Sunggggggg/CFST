@@ -122,12 +122,13 @@ class Trainer():
         }
 
         self.generator.train()
-
-        tqdm_bar = tqdm(range(self.num_iters_per_epoch), desc="[ Training ] ") if self.device==0 else range(self.num_iters_per_epoch)
-        for i in tqdm_bar:
-            summary_string = ''
-            start = time.time()
-
+        start = time.time()
+        summary_string = ''
+        
+        if self.device == 0 :
+            bar = Bar(f'Epoch {self.epoch + 1}/{self.end_epoch}', fill='#', max=self.num_iters_per_epoch)
+    
+        for i in range(self.num_iters_per_epoch):
             # Dirty solution to reset an iterator
             target_2d = target_3d = None
             if self.train_2d_iter:
@@ -186,30 +187,31 @@ class Trainer():
             timer['backward'] = time.time() - start
             timer['batch'] = timer['data'] + timer['forward'] + timer['loss'] + timer['backward']
 
-            summary_string = f'[ Training ] epoch: ({self.epoch + 1}/{self.end_epoch})'
-
-            for k, v in losses.items():
-                summary_string += f' | {k}: {v.avg:.2f}'
-                if self.writer:
-                    self.writer.add_scalar('train_loss/'+k, v.avg, global_step=self.train_global_step)
-
-            for k,v in timer.items():
-                summary_string += f' | {k}: {v:.2f}'
-
-            if self.writer:
-                self.writer.add_scalar('train_loss/loss', total_loss.item(), global_step=self.train_global_step)
-
             if self.device == 0:
-                tqdm_bar.set_description(summary_string)
+                summary_string = f'[ Training ] epoch: ({self.epoch + 1}/{self.end_epoch})'
 
-            self.train_global_step += 1
+                for k, v in losses.items():
+                    summary_string += f' | {k}: {v.avg:.2f}'
+                    if self.writer:
+                        self.writer.add_scalar('train_loss/'+k, v.avg, global_step=self.train_global_step)
 
-            del preds
-            del target_2d
-            del target_3d
+                for k,v in timer.items():
+                    summary_string += f' | {k}: {v:.2f}'
+
+                if self.writer:
+                    self.writer.add_scalar('train_loss/loss', total_loss.item(), global_step=self.train_global_step)
+
+                bar.suffix = summary_string
+                bar.next()
+
+                self.train_global_step += 1
             
             if torch.isnan(total_loss):
                 exit('Nan value in loss, exiting!...')
+        
+        if self.device == 0:
+            bar.finish()
+            logger.info(summary_string)
 
     def validate(self):
         self.generator.eval()
@@ -255,41 +257,33 @@ class Trainer():
                 bar.suffix = summary_string
                 bar.next()
 
-                del preds
+                
 
         bar.finish()
         logger.info(summary_string)
+
+        del preds
 
     def fit(self):
 
         for epoch in range(self.start_epoch, self.end_epoch):
             self.epoch = epoch
-            if self.device == 0:
-                save_dict = {
-                        'epoch': epoch,
-                        'gen_state_dict': self.generator.module.state_dict(),
-                        'gen_optimizer': self.gen_optimizer.state_dict(),
-                    }
-
-                filename = osp.join('/mnt/SKY/CFST/checkpoint.pth.tar')
-                torch.save(save_dict, filename)
-
+            
             self.train()
             
-            
-                # if epoch + 1 >= self.val_epoch :
-                #     self.validate()
-                #     performance = self.evaluate()
+            if self.device == 0:
+                if epoch + 1 >= self.val_epoch :
+                    self.validate()
+                    performance = self.evaluate()
 
-                # # log the learning rate
-                # for param_group in self.gen_optimizer.param_groups:
-                #     print(f'Learning rate {param_group["lr"]}')
-                #     self.writer.add_scalar('lr/gen_lr', param_group['lr'], global_step=self.epoch)
+                # log the learning rate
+                for param_group in self.gen_optimizer.param_groups:
+                    print(f'Learning rate {param_group["lr"]}')
+                    self.writer.add_scalar('lr/gen_lr', param_group['lr'], global_step=self.epoch)
                 
-                # if epoch + 1 >= self.val_epoch:
-                #     logger.info(f'Epoch {epoch+1} performance: {performance:.4f}')
-                #     self.save_model(performance, epoch)
-                
+                if epoch + 1 >= self.val_epoch:
+                    logger.info(f'Epoch {epoch+1} performance: {performance:.4f}')
+                    self.save_model(performance, epoch)
 
             # lr decay
             if self.lr_scheduler is not None:
@@ -301,7 +295,7 @@ class Trainer():
     def save_model(self, performance, epoch):
         save_dict = {
             'epoch': epoch,
-            'gen_state_dict': self.generator.state_dict(),
+            'gen_state_dict': self.generator.module.state_dict(),
             'performance': performance,
             'gen_optimizer': self.gen_optimizer.state_dict(),
         }

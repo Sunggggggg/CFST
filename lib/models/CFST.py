@@ -5,7 +5,7 @@ import torch.nn as nn
 
 from lib.models.spin import spin_backbone_init, Regressor
 from lib.models.encoder import STencoder
-from lib.models.trans_operator import CrossAttention
+from lib.models.trans_operator import CrossAttention, Mlp
 from lib.models.HSCR import HSCR
 
 class CFST(nn.Module):
@@ -45,6 +45,8 @@ class CFST(nn.Module):
         self.t_proj = nn.Linear(d_local, d_local)
         self.local_spa_atten = CrossAttention(d_local, num_heads=num_head, qk_scale=True, qkv_bias=None)
         self.local_tem_atten = CrossAttention(d_local, num_heads=num_head, qk_scale=True, qkv_bias=None)
+        self.ffl1 = Mlp(in_features=d_local, hidden_features=d_local*2)
+        self.ffl2 = Mlp(in_features=d_local, hidden_features=d_local*2)
 
         num_local_patch = math.ceil(num_patch / stride_short)
         self.fusion = nn.Linear(num_local_patch, 1)
@@ -99,7 +101,10 @@ class CFST(nn.Module):
 
         local_st_feat = torch.flatten(local_st_feat, 1, 2)
         local_st_feat = self.local_spa_atten(local_st_feat, proj_spatial_feat)
+        local_st_feat = self.ffl1(local_st_feat)
         local_st_feat = self.local_tem_atten(local_st_feat, proj_temporal_feat)             # [B, tn, d/2]
+        local_st_feat = self.ffl2(local_st_feat)
+
         local_st_feat = local_st_feat.reshape(B, self.stride_short*2 + 1, self.d_local, -1) # [B, t, d/2, n]
         local_t_feat = self.fusion(local_st_feat).reshape(B, self.stride_short*2 + 1, -1)   # [B, t, 256]
         global_t_feat = self.output_proj(local_t_feat)                                      # [B, t, 2048]

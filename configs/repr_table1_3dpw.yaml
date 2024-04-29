@@ -14,7 +14,7 @@ DATASET:
   WIDTH: 224 
 LOSS:
   KP_2D_W: 300.0
-  KP_3D_W: 300.0
+  KP_3D_W: 600.0
   SHAPE_W: 0.06
   POSE_W: 60.0
   D_MOTION_LOSS_W: 0.0
@@ -37,8 +37,8 @@ TRAIN:
   #   - 'Insta'
   DATASETS_3D:
     - 'ThreeDPW'
-    #- 'MPII3D'
-    #- 'Human36M'
+    - 'MPII3D'
+    - 'Human36M'
   DATASET_EVAL: 'ThreeDPW'
   GEN_LR: 0.0001
   GEN_WD: 0.0

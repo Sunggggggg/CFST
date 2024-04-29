@@ -113,3 +113,26 @@ class Block(nn.Module):
         x = x + self.drop_path(self.attn(self.norm1(x), mask))
         x = x + self.drop_path(self.mlp(self.norm2(x)))
         return x
+    
+class FFNLayer(nn.Module):
+    def __init__(self, d_model, dim_feedforward=2048, dropout=0.0, activation="gelu"):
+        super(FFNLayer, self).__init__()
+        self.linear1 = nn.Linear(d_model, dim_feedforward)
+        self.dropout = nn.Dropout(dropout)
+        self.linear2 = nn.Linear(dim_feedforward, d_model)
+
+        self.norm = nn.LayerNorm(d_model)
+        self.activation = nn.GELU()
+    
+        self._reset_parameters()
+    
+    def _reset_parameters(self):
+        for p in self.parameters():
+            if p.dim() > 1:
+                nn.init.xavier_uniform_(p)
+
+    def forward(self, queries):
+        queries2 = self.linear2(self.dropout(self.activation(self.linear1(queries))))
+        queries = queries + self.dropout(queries2)
+        queries = self.norm(queries)
+        return queries
