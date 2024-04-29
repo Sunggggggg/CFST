@@ -187,6 +187,7 @@ if __name__ == "__main__":
         pbar = tqdm(dataset_data.keys())
         for seq_name in pbar:
             curr_imgname = dataset_data[seq_name]['imgname']
+            print(curr_imgname)
             curr_bbox = dataset_data[seq_name]['bbox']   
             curr_img = get_single_image_crop(osp.join('/mnt/SKY', curr_imgname), None, bbox, scale=1.2)
             print(curr_img.shape)
