@@ -135,6 +135,7 @@ class Trainer():
                 try:
                     target_2d = next(self.train_2d_iter)
                 except StopIteration:
+                    self.train_2d_loader.sampler.set_epoch(self.epoch)
                     self.train_2d_iter = iter(self.train_2d_loader)
                     target_2d = next(self.train_2d_iter)
 
@@ -144,6 +145,7 @@ class Trainer():
                 try:
                     target_3d = next(self.train_3d_iter)
                 except StopIteration:
+                    self.train_3d_loader.sampler.set_epoch(self.epoch)
                     self.train_3d_iter = iter(self.train_3d_loader)
                     target_3d = next(self.train_3d_iter)
 
