@@ -101,8 +101,8 @@ class CFST(nn.Module):
         local_st_feat = self.local_spa_atten(local_st_feat, proj_spatial_feat)
         local_st_feat = self.local_tem_atten(local_st_feat, proj_temporal_feat)             # [B, tn, d/2]
         local_st_feat = local_st_feat.reshape(B, self.stride_short*2 + 1, self.d_local, -1) # [B, t, d/2, n]
-        local_t_feat = self.fusion(local_st_feat).squeeze()   # [B, t, 256]
-        global_t_feat = self.output_proj(local_t_feat)        # [B, t, 2048]
+        local_t_feat = self.fusion(local_st_feat).reshape(B, self.stride_short*2 + 1, -1)   # [B, t, 256]
+        global_t_feat = self.output_proj(local_t_feat)                                      # [B, t, 2048]
 
         ##########################
         # Regressor
