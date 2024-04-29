@@ -185,6 +185,8 @@ class Trainer():
             total_loss = gen_loss
             if self.device > 0 :
                 total_loss, total_instance = self.sync_data(total_loss)
+            else :
+                total_instance = 1
             self.loss_meter_update(losses, total_loss.item(), loss_dict, total_instance)
 
             timer['backward'] = time.time() - start
