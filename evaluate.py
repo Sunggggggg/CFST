@@ -10,7 +10,7 @@ from tqdm import tqdm
 from collections import defaultdict
 import importlib
 from lib.core.config import BASE_DATA_DIR, parse_args
-from lib.data_utils._img_utils import split_into_chunks_test
+from lib.data_utils._img_utils import split_into_chunks_test, get_single_image_crop
 from lib.data_utils._kp_utils import convert_kps
 from lib.models.smpl import SMPL_MODEL_DIR, SMPL, H36M_TO_J14
 from lib.utils.demo_utils import convert_crop_cam_to_orig_img, images_to_video
@@ -186,9 +186,10 @@ if __name__ == "__main__":
         tot_num_pose = 0
         pbar = tqdm(dataset_data.keys())
         for seq_name in pbar:
-            curr_imgname = dataset_data[seq_name]['video']   
-
-            num_frames = curr_imgname.shape[0]
+            curr_imgname = dataset_data[seq_name]['imgname']
+            curr_bbox = dataset_data[seq_name]['bbox']   
+            curr_img = get_single_image_crop(osp.join('/mnt/SKY', curr_imgname), None, bbox, scale=1.2)
+            print(curr_img.shape)
             vid_names = dataset_data[seq_name]['vid_name']
 
             chunk_idxes = split_into_chunks_test(vid_names, seqlen=seqlen, stride=stride, is_train=False, match_vibe=False)  # match vibe eval number of poses
@@ -201,11 +202,11 @@ if __name__ == "__main__":
                 if (curr_idx + 8) < len(chunk_idxes):
                     for ii in range(8):
                         seq_select = get_sequence(chunk_idxes[curr_idx+ii][0], chunk_idxes[curr_idx+ii][1])
-                        input_img.append(curr_imgname[None, seq_select, :])
+                        input_img.append(curr_img[None, seq_select, :])
                 else:
                     for ii in range(curr_idx, len(chunk_idxes)):
                         seq_select = get_sequence(chunk_idxes[ii][0], chunk_idxes[ii][1])
-                        input_img.append(curr_imgname[None, seq_select, :])
+                        input_img.append(curr_img[None, seq_select, :])
 
                 input_img = torch.cat(input_img, dim=0)
                 preds = model(input_img, J_regressor=J_regressor, is_train=False)
