@@ -255,7 +255,7 @@ class Regressor(nn.Module):
         x : [B, t, d]
         """
         seq_len = x.shape[1]
-        x = x.reshape(-1, x.size(-1))   # [BT, d]
+        x = x.reshape(-1, x.size(-1))   # [BT, d] [8*9, 2048]
         batch_size = x.shape[0]
         if init_pose is None:
             init_pose = self.init_pose.expand(batch_size, -1)       #[BT, 24*6]
@@ -286,11 +286,9 @@ class Regressor(nn.Module):
             next_init_shape = pred_shape.reshape(-1, seq_len, 10)
             next_init_cam = pred_cam.reshape(-1, seq_len, 3)
         else:
-            print(seq_len)
-            print(x.shape)   
-            next_init_pose = pred_pose.reshape(-1, seq_len, 144)[:, seq_len // 2][:, None, :]       # [8*9, 144]
-            next_init_shape = pred_shape.reshape(-1, seq_len, 10)[:, seq_len // 2][:, None, :]      # [8*9, 10]
-            next_init_cam = pred_cam.reshape(-1, seq_len, 3)[:, seq_len // 2][:, None, :]           # [8*9, 3]
+            next_init_pose = pred_pose.reshape(batch_size, seq_len, 144)[:, seq_len // 2][:, None, :]       # [8*9, 144]
+            next_init_shape = pred_shape.reshape(batch_size, seq_len, 10)[:, seq_len // 2][:, None, :]      # [8*9, 10]
+            next_init_cam = pred_cam.reshape(batch_size, seq_len, 3)[:, seq_len // 2][:, None, :]           # [8*9, 3]
 
         pred_rotmat = rot6d_to_rotmat(pred_pose).view(batch_size, 24, 3, 3)
 
