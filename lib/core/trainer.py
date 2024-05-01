@@ -160,14 +160,11 @@ class Trainer():
 
             # <======= Feedforward generator and discriminator
             if target_2d and target_3d:
-                inp = torch.cat((target_2d['features'], target_3d['features']), dim=0).cuda()
-                inp_vitpose = torch.cat((target_2d['vitpose_j2d'], target_3d['vitpose_j2d']), dim=0).cuda()
+                pass
             elif target_3d:
-                inp = target_3d['features'].cuda()
-                inp_vitpose = target_3d['vitpose_j2d'].cuda()
+                inp = target_3d['video']
             else:
-                inp = target_2d['features'].cuda()
-                inp_vitpose = target_3d['vitpose_j2d'].cuda()
+                pass
     
             # Replay 
             if False :
