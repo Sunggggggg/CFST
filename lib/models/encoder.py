@@ -249,8 +249,8 @@ class STencoder(nn.Module) :
         ###############################
         # Local st-transformer
         ###############################
-        x_local = x[:, self.mid_frame - self.stride_short:self.mid_frame + self.stride_short + 1, 0::self.stride_short] # [B, t, n, d]
-        spatial_pos_embed_local = self.spatial_pos_embed[:, 0::self.stride_short]                                       # [B, n, d]
+        x_local = x[:, self.mid_frame - self.stride_short:self.mid_frame + self.stride_short + 1]   # [B, t, n, d]
+        spatial_pos_embed_local = self.spatial_pos_embed[:, 0::self.stride_short]                   # [B, n, d]
         temporal_pos_embed_local = self.temporal_pos_embed[:, self.mid_frame - self.stride_short:self.mid_frame + self.stride_short + 1] # [B, t, d]
 
         local_st_feat = self.st_trans(x_local, spatial_pos_embed_local, temporal_pos_embed_local) # [B, t, n, d]

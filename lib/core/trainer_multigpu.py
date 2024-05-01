@@ -22,6 +22,9 @@ import numpy as np
 import os.path as osp
 from progress.bar import Bar
 
+from tqdm import tqdm
+from collections import defaultdict
+from torch.distributed import all_reduce as allreduce
 from lib.core.config import BASE_DATA_DIR
 from lib.utils.utils import move_dict_to_device, AverageMeter, check_data_pararell
 from lib.utils.eval_utils import (
@@ -40,22 +43,18 @@ class Trainer():
             cfg,
             data_loaders,
             generator,
-            motion_discriminator,
             gen_optimizer,
-            dis_motion_optimizer,
             criterion,
             lr_scheduler=None,
-            motion_lr_scheduler=None,
             writer=None,
             performance_type='min',
-            clip_norm_num=None,
-            val_epoch=5
+            val_epoch=5,
     ):
         dis_motion_update_steps=cfg.TRAIN.MOT_DISCR.UPDATE_STEPS
         start_epoch=cfg.TRAIN.START_EPOCH
         end_epoch=cfg.TRAIN.END_EPOCH
-        device=cfg.DEVICE
         debug=cfg.DEBUG
+        device=cfg.DEVICE
         logdir=cfg.LOGDIR
         resume=cfg.TRAIN.RESUME
         num_iters_per_epoch=cfg.TRAIN.NUM_ITERS_PER_EPOCH
@@ -63,7 +62,6 @@ class Trainer():
         self.table_name = cfg.TITLE
 
         self.train_2d_loader, self.train_3d_loader, self.valid_loader = data_loaders
-        self.clip_norm_num = clip_norm_num
         self.train_2d_iter = self.train_3d_iter = None
 
         if self.train_2d_loader:
@@ -113,13 +111,8 @@ class Trainer():
     def train(self):
         # Single epoch training routine
 
-        losses = AverageMeter()
-        kp_2d_loss = AverageMeter()
-        kp_3d_loss = AverageMeter()
-        kp_2d_loss_short = AverageMeter()
-        kp_3d_loss_short = AverageMeter()
-        accel_loss_short_2d = AverageMeter()
-        accel_loss_short_3d = AverageMeter()
+        losses = defaultdict(lambda: AverageMeter())
+
         timer = {
             'data': 0,
             'forward': 0,
@@ -129,13 +122,12 @@ class Trainer():
         }
 
         self.generator.train()
-
         start = time.time()
-
         summary_string = ''
-
-        bar = Bar(f'Epoch {self.epoch + 1}/{self.end_epoch}', fill='#', max=self.num_iters_per_epoch)
-
+        
+        if self.device == 0 :
+            bar = Bar(f'Epoch {self.epoch + 1}/{self.end_epoch}', fill='#', max=self.num_iters_per_epoch)
+    
         for i in range(self.num_iters_per_epoch):
             # Dirty solution to reset an iterator
             target_2d = target_3d = None
@@ -143,6 +135,7 @@ class Trainer():
                 try:
                     target_2d = next(self.train_2d_iter)
                 except StopIteration:
+                    #self.train_2d_loader.sampler.set_epoch(self.epoch)
                     self.train_2d_iter = iter(self.train_2d_loader)
                     target_2d = next(self.train_2d_iter)
 
@@ -152,57 +145,25 @@ class Trainer():
                 try:
                     target_3d = next(self.train_3d_iter)
                 except StopIteration:
+                    #self.train_3d_loader.sampler.set_epoch(self.epoch)
                     self.train_3d_iter = iter(self.train_3d_loader)
                     target_3d = next(self.train_3d_iter)
 
                 move_dict_to_device(target_3d, self.device)
 
-
             # <======= Feedforward generator and discriminator
             if target_2d and target_3d:
-                inp = torch.cat((target_2d['features'], target_3d['features']), dim=0).cuda()
-                inp_vitpose = torch.cat((target_2d['vitpose_j2d'], target_3d['vitpose_j2d']), dim=0).cuda()
+                pass
             elif target_3d:
-                inp = target_3d['features'].cuda()
-                inp_vitpose = target_3d['vitpose_j2d'].cuda()
+                inp = target_3d['video']
             else:
-                inp = target_2d['features'].cuda()
-                inp_vitpose = target_3d['vitpose_j2d'].cuda()
-    
-            # Replay 
-            if False :
-                timer['data'] = time.time() - start
-                start = time.time()
-
-                inv_inp = inp.flip(1)               # [B, hT, 2048]
-                inv_vitpose = inp_vitpose.flip(1)   # [B, T, J, 3] 
-                preds, mask_ids, pred_mae = self.generator(inv_inp, inv_vitpose, is_train=True)
-                
-                timer['forward'] = time.time() - start
-                start = time.time()
-
-                gen_loss, loss_dict = self.criterion(
-                    generator_outputs_mae=pred_mae,
-                    generator_outputs_short=preds,
-                    data_2d=target_2d,
-                    data_3d=target_3d,
-                    scores=None, 
-                    mask_ids=mask_ids
-                )
-                
-                timer['loss'] = time.time() - start
-                start = time.time()
-
-                # <======= Backprop generator and discriminator
-                self.gen_optimizer.zero_grad()
-                gen_loss.backward()
-                self.gen_optimizer.step()
+                pass
 
             timer['data'] = time.time() - start
             start = time.time()
 
             preds = self.generator(inp, is_train=True)
-            
+
             timer['forward'] = time.time() - start
             start = time.time()
 
@@ -222,54 +183,40 @@ class Trainer():
 
             # <======= Log training info
             total_loss = gen_loss
-            # exclude motion discriminator
-            # total_loss = gen_loss + motion_dis_loss
-
-            losses.update(total_loss.item(), inp.size(0))
-            kp_2d_loss_short.update(loss_dict['loss_kp_2d_short'].item(), inp.size(0))
-            kp_3d_loss_short.update(loss_dict['loss_kp_3d_short'].item(), inp.size(0))
-
-            accel_loss_short_2d.update(loss_dict['loss_accel_2d_short'].item(), inp.size(0))
-            accel_loss_short_3d.update(loss_dict['loss_accel_3d_short'].item(), inp.size(0))
+            if self.device > 0 :
+                total_loss, total_instance = self.sync_data(total_loss)
+            else :
+                total_instance = 1
+            self.loss_meter_update(losses, total_loss.item(), loss_dict, total_instance)
 
             timer['backward'] = time.time() - start
             timer['batch'] = timer['data'] + timer['forward'] + timer['loss'] + timer['backward']
-            start = time.time()
 
-            summary_string = f'({i + 1}/{self.num_iters_per_epoch}) | Total: {bar.elapsed_td} | ' \
-                             f'ETA: {bar.eta_td:} | loss: {losses.avg:.2f} | 2d: {kp_2d_loss.avg:.2f} ' \
-                             f'| 3d: {kp_3d_loss.avg:.2f} 2d_short: {kp_2d_loss_short.avg:.2f} ' \
-                             f'| 3d_short: {kp_3d_loss_short.avg:.2f} ' \
-                             f'| 2d_short_accel: {accel_loss_short_2d.avg:.2f} ' \
-                             f'| 3d_short_accel: {accel_loss_short_3d.avg:.2f} '
+            if self.device == 0:
+                summary_string = f'({self.epoch + 1}/{self.end_epoch})'
 
-            for k, v in loss_dict.items():
-                summary_string += f' | {k}: {v:.3f}'
-                self.writer.add_scalar('train_loss/'+k, v, global_step=self.train_global_step)
-            for k,v in timer.items():
-                summary_string += f' | {k}: {v:.2f}'
+                for k, v in losses.items():
+                    summary_string += f' | {k}: {v.avg:.2f}'
+                    if self.writer:
+                        self.writer.add_scalar('train_loss/'+k, v.avg, global_step=self.train_global_step)
 
-            self.writer.add_scalar('train_loss/loss', total_loss.item(), global_step=self.train_global_step)
-            if self.debug:
-                print('==== Visualize ====')
-                from lib.utils.vis import batch_visualize_vid_preds
-                video = target_3d['video']
-                dataset = 'spin'
-                vid_tensor = batch_visualize_vid_preds(video, preds[-1], target_3d.copy(),
-                                                       vis_hmr=False, dataset=dataset)
-                self.writer.add_video('train-video', vid_tensor, global_step=self.train_global_step, fps=10)
+                for k,v in timer.items():
+                    summary_string += f' | {k}: {v:.2f}'
 
-            self.train_global_step += 1
-            bar.suffix = summary_string
-            bar.next()
+                if self.writer:
+                    self.writer.add_scalar('train_loss/loss', total_loss.item(), global_step=self.train_global_step)
 
+                bar.suffix = summary_string
+                bar.next()
+
+                self.train_global_step += 1
+            
             if torch.isnan(total_loss):
                 exit('Nan value in loss, exiting!...')
-            # =======>
-
-        bar.finish()
-
-        logger.info(summary_string)
+        
+        if self.device == 0:
+            bar.finish()
+            logger.info(summary_string)
 
     def validate(self):
         self.generator.eval()
@@ -289,10 +236,9 @@ class Trainer():
             for i, target in enumerate(self.valid_loader):
                 move_dict_to_device(target, self.device)
                 # <=============
-                inp = target['features']
-                inp_vitpose = target['vitpose_j2d']
+                inp = target['video']
                 batch = len(inp)
-                preds, mask_ids, pred_mae = self.generator(inp ,inp_vitpose, is_train=False, J_regressor=J_regressor)
+                preds = self.generator(inp, is_train=False, J_regressor=J_regressor)
 
                 # convert to 14 keypoint format for evaluation
                 n_kp = preds[-1]['kp_3d'].shape[-2]
@@ -317,37 +263,49 @@ class Trainer():
                 bar.next()
 
         bar.finish()
-
         logger.info(summary_string)
+
+        del preds
 
     def fit(self):
 
         for epoch in range(self.start_epoch, self.end_epoch):
             self.epoch = epoch
-            self.train()
-            self.validate()
-            if epoch + 1 >= self.val_epoch:
-                performance = self.evaluate()
-
-            # log the learning rate
-            for param_group in self.gen_optimizer.param_groups:
-                print(f'Learning rate {param_group["lr"]}')
-                self.writer.add_scalar('lr/gen_lr', param_group['lr'], global_step=self.epoch)
             
-            if epoch + 1 >= self.val_epoch:
+            self.train()
+            
+            if epoch % 10 == 0:
+                self.validate()
+                performance = self.evaluate()
                 logger.info(f'Epoch {epoch+1} performance: {performance:.4f}')
-                self.save_model(performance, epoch)
+                #self.save_model(performance, epoch)
 
+                save_dict = {
+                    'epoch': epoch,
+                    'gen_state_dict': self.generator.state_dict(),
+                    'performance': performance,
+                    'gen_optimizer': self.gen_optimizer.state_dict(),
+                }
+
+                filename = osp.join(self.logdir, f'checkpoint.pth.tar')
+                torch.save(save_dict, filename)
+    
+                # log the learning rate
+                for param_group in self.gen_optimizer.param_groups:
+                    print(f'Learning rate {param_group["lr"]}')
+                    self.writer.add_scalar('lr/gen_lr', param_group['lr'], global_step=self.epoch)
+                
             # lr decay
             if self.lr_scheduler is not None:
                 self.lr_scheduler.step()
+
 
         self.writer.close()
 
     def save_model(self, performance, epoch):
         save_dict = {
             'epoch': epoch,
-            'gen_state_dict': self.generator.state_dict(),
+            'gen_state_dict': self.generator.module.state_dict(),
             'performance': performance,
             'gen_optimizer': self.gen_optimizer.state_dict(),
         }
@@ -429,3 +387,32 @@ class Trainer():
             self.writer.add_scalar(f'error/{k}', v, global_step=self.epoch)
         # return accel_err
         return pa_mpjpe
+    
+
+    def sync_data(self, item, num_item=1):
+        # Gather data computed on each rank and average them
+        if not torch.is_tensor(item):
+            item = torch.tensor(item*num_item).float().to(self.device)
+            return_tensor = False
+        else:
+            item = item*num_item
+            return_tensor = True
+
+        if not torch.is_tensor(num_item):
+            num_item = torch.tensor(num_item).float().to(self.device)
+        allreduce(item) # Sum of data
+        allreduce(num_item) # Total number of data     
+
+        item_avg = item.item()
+        num_total = num_item.item()
+        item_avg /= max(num_total, 1)
+
+        if return_tensor:
+            item_avg = torch.tensor(item_avg).float().to(self.device)
+        return item_avg, num_total
+    
+    def loss_meter_update(self, loss_meter, total_loss, loss_dict, num):
+        loss_meter['loss'].update(total_loss, num)
+        for key, loss in loss_dict.items():
+            loss_meter[key].update(loss, num)
+        return loss_meter

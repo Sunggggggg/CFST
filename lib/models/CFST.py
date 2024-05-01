@@ -20,7 +20,7 @@ class CFST(nn.Module):
                  mask_ratio=0.,
                  stride_short=4,
                  short_n_layers = 3,
-                 device=torch.device('cuda:0'),
+                 device=torch.device('cuda'),
                  ) :
         super().__init__()
         super(CFST, self).__init__()
