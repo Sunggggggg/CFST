@@ -134,7 +134,9 @@ class STtransformer(nn.Module):
         self.norm_t = norm_layer(embed_dim)
 
     def SpaTemHead(self, x, spatial_pos, temporal_pos):
-        print(x.shape, spatial_pos.shape, temporal_pos.shape)
+        """
+        x : [B , t, ]
+        """
         b, t, n, c = x.shape
         x = rearrange(x, 'b t n c  -> (b t) n c')
         x = x + spatial_pos
@@ -188,12 +190,17 @@ class STencoder(nn.Module) :
                  device=torch.device("cuda")
                  ):
         super().__init__()
+        self.embed_dim = embed_dim
         self.mid_frame = int(seqlen // 2)
         self.stride_short = stride_short
         self.mask_ratio = mask_ratio
         
+        self.local_spatial_feat = nn.Conv2d(in_channels=embed_dim, out_channels=embed_dim, kernel_size=(2, 2), stride=(2, 2))
+
         self.spatial_pos_embed = nn.Parameter(torch.zeros(1, hw, embed_dim))
         self.temporal_pos_embed = nn.Parameter(torch.zeros(1, seqlen, embed_dim))
+        self.spatial_pos_embed_local = nn.Parameter(torch.zeros(1, int(hw//4), embed_dim))
+        self.temporal_pos_embed_local = nn.Parameter(torch.zeros(1, stride_short*2+1, embed_dim))
 
         self.temporal_trans = MaskTransformer(depth=n_layers, embed_dim=embed_dim, 
                             mlp_hidden_dim=embed_dim*2, head=num_head, 
@@ -238,23 +245,28 @@ class STencoder(nn.Module) :
         ###############################
         # Global aggregation
         ###############################
+        B = x.shape[0]
         global_spatial_feat = temporal_pool(x)      # [B, N, d]
         global_temporal_feat = sptial_pool(x)       # [B, T, d]
+        local_feat = x[:, self.mid_frame - self.stride_short:self.mid_frame + (self.stride_short + 1)]  # [B, t, n, d]
+        local_feat = local_feat.reshape(B, self.stride_short*2+1, 14, 14, -1)   # [B, t, h, w, d]
+        local_feat = local_feat.permute(0, 1, -1, 2, 3)
+        local_feat = torch.flatten(local_feat, 0, 1)        # [Bt, d, h, w]
+        local_feat = self.local_spatial_feat(local_feat)    # [bt, d, h/2, w/2]
+        local_feat = local_feat.reshape(B, self.stride_short*2+1, self.embed_dim, -1)   # [B, t, d, n]
+        local_feat = local_feat.permute(0, 1, 3, 2)
+
 
         global_spatial_feat = global_spatial_feat + self.spatial_pos_embed
         global_temporal_feat = global_temporal_feat + self.temporal_pos_embed
 
-        global_temporal_feat, temporal_mask = self.temporal_trans(global_temporal_feat, is_train=is_train, mask_ratio=self.mask_ratio) # [B, T, d]
-        global_spatial_feat, spatial_mask = self.spatial_trans(global_spatial_feat, is_train=is_train, mask_ratio=self.mask_ratio)     # [B, N, d]
+        global_temporal_feat, temporal_mask = self.temporal_trans(global_temporal_feat, is_train=is_train, mask_ratio=self.mask_ratio) # [B, T, d/2]
+        global_spatial_feat, spatial_mask = self.spatial_trans(global_spatial_feat, is_train=is_train, mask_ratio=self.mask_ratio)     # [B, N, d/2]
 
         ###############################
         # Local st-transformer
         ###############################
-        x_local = x[:, self.mid_frame - self.stride_short:self.mid_frame + self.stride_short + 1]   # [B, t, n, d]
-        spatial_pos_embed_local = self.spatial_pos_embed[:, 0::self.stride_short]                   # [B, n, d]
-        temporal_pos_embed_local = self.temporal_pos_embed[:, self.mid_frame - self.stride_short:self.mid_frame + self.stride_short + 1] # [B, t, d]
-
-        local_st_feat = self.st_trans(x_local, spatial_pos_embed_local, temporal_pos_embed_local) # [B, t, n, d]
+        local_st_feat = self.st_trans(local_feat, self.spatial_pos_embed_local, self.temporal_pos_embed_local) # [B, t, n, d]
         local_st_feat = self.out_proj(local_st_feat)
 
         return local_st_feat, global_temporal_feat, global_spatial_feat

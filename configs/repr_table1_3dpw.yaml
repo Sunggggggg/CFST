@@ -69,5 +69,5 @@ MODEL:
   short_dropout: 0.1  
   short_drop_path_r: 0.2
   short_atten_drop: 0. 
-  stride_short: 4
+  stride_short: 3
   drop_reg_short: 0.25

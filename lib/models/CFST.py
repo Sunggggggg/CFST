@@ -28,7 +28,7 @@ class CFST(nn.Module):
         self.stride_short = stride_short
         self.mid_frame = seqlen // 2
         self.d_model = d_model 
-        self.num_patch = num_patch = int((224/8/2)**(2))
+        self.num_patch = num_patch = int((224/8/2)**(2))    # 14**2
 
         ##########################
         # STBranch
