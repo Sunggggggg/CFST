@@ -6,7 +6,7 @@ import numpy as np
 import torch.multiprocessing as mp
 import torch.backends.cudnn as cudnn
 
-from lib.core.trainer_multigpu import Trainer
+from lib.core.trainer import Trainer
 from lib.core.loss import Loss
 from lib.models.CFST import CFST
 from lib.core.config import parse_args
