@@ -48,8 +48,7 @@ class CFST(nn.Module):
         self.ffl1 = Mlp(in_features=d_local, hidden_features=d_local*2)
         self.ffl2 = Mlp(in_features=d_local, hidden_features=d_local*2)
 
-        num_local_patch = math.ceil(num_patch / stride_short)
-        self.fusion = nn.Linear(num_local_patch, 1)
+        self.fusion = nn.Linear(196, 1)
         self.output_proj = nn.Linear(d_local, 2048)
 
         ##########################
