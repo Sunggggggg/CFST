@@ -131,6 +131,7 @@ class Trainer():
 
         summary_string = ''
 
+        self.num_iters_per_epoch = 100
         bar = Bar(f'Epoch {self.epoch + 1}/{self.end_epoch}', fill='#', max=self.num_iters_per_epoch)
 
         for i in range(self.num_iters_per_epoch):
@@ -283,10 +284,9 @@ class Trainer():
             for i, target in enumerate(self.valid_loader):
                 move_dict_to_device(target, self.device)
                 # <=============
-                inp = target['features']
-                inp_vitpose = target['vitpose_j2d']
+                inp = target['video']
                 batch = len(inp)
-                preds, mask_ids, pred_mae = self.generator(inp ,inp_vitpose, is_train=False, J_regressor=J_regressor)
+                preds, mask_ids, pred_mae = self.generator(inp, is_train=False, J_regressor=J_regressor)
 
                 # convert to 14 keypoint format for evaluation
                 n_kp = preds[-1]['kp_3d'].shape[-2]
