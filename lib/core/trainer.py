@@ -111,8 +111,6 @@ class Trainer():
         # Single epoch training routine
 
         losses = AverageMeter()
-        kp_2d_loss = AverageMeter()
-        kp_3d_loss = AverageMeter()
         kp_2d_loss_short = AverageMeter()
         kp_3d_loss_short = AverageMeter()
         accel_loss_short_2d = AverageMeter()
@@ -131,6 +129,7 @@ class Trainer():
 
         summary_string = ''
 
+        self.num_iters_per_epoch = 5
         bar = Bar(f'Epoch {self.epoch + 1}/{self.end_epoch}', fill='#', max=self.num_iters_per_epoch)
 
         for i in range(self.num_iters_per_epoch):
