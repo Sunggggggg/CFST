@@ -105,6 +105,7 @@ class CFST(nn.Module):
         local_st_feat = self.ffl2(local_st_feat)
 
         local_st_feat = local_st_feat.reshape(B, self.stride_short*2 + 1, self.d_local, -1) # [B, t, d/2, n]
+        print(local_st_feat.shape)
         local_t_feat = self.fusion(local_st_feat).reshape(B, self.stride_short*2 + 1, -1)   # [B, t, 256]
         global_t_feat = self.output_proj(local_t_feat)                                      # [B, t, 2048]
 
