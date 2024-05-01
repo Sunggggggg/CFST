@@ -309,6 +309,8 @@ class Trainer():
                 bar.suffix = summary_string
                 bar.next()
 
+                break
+
         bar.finish()
 
         logger.info(summary_string)
