@@ -162,6 +162,7 @@ class Trainer():
             timer['data'] = time.time() - start
             start = time.time()
 
+            
             preds = self.generator(inp, is_train=True)
 
             timer['forward'] = time.time() - start

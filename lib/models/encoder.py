@@ -134,6 +134,7 @@ class STtransformer(nn.Module):
         self.norm_t = norm_layer(embed_dim)
 
     def SpaTemHead(self, x, spatial_pos, temporal_pos):
+        print(x.shape, spatial_pos.shape, temporal_pos.shape)
         b, t, n, c = x.shape
         x = rearrange(x, 'b t n c  -> (b t) n c')
         x = x + spatial_pos
