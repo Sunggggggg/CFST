@@ -131,7 +131,7 @@ class Trainer():
 
         summary_string = ''
 
-        self.num_iters_per_epoch = 100
+        self.num_iters_per_epoch = 10
         bar = Bar(f'Epoch {self.epoch + 1}/{self.end_epoch}', fill='#', max=self.num_iters_per_epoch)
 
         for i in range(self.num_iters_per_epoch):
