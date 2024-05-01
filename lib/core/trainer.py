@@ -131,7 +131,6 @@ class Trainer():
 
         summary_string = ''
 
-        self.num_iters_per_epoch = 10
         bar = Bar(f'Epoch {self.epoch + 1}/{self.end_epoch}', fill='#', max=self.num_iters_per_epoch)
 
         for i in range(self.num_iters_per_epoch):
@@ -232,8 +231,8 @@ class Trainer():
             start = time.time()
 
             summary_string = f'({i + 1}/{self.num_iters_per_epoch}) | Total: {bar.elapsed_td} | ' \
-                             f'ETA: {bar.eta_td:} | loss: {losses.avg:.2f} | 2d: {kp_2d_loss.avg:.2f} ' \
-                             f'| 3d: {kp_3d_loss.avg:.2f} 2d_short: {kp_2d_loss_short.avg:.2f} ' \
+                             f'ETA: {bar.eta_td:} | loss: {losses.avg:.2f}' \
+                             f'| 2d_short: {kp_2d_loss_short.avg:.2f} ' \
                              f'| 3d_short: {kp_3d_loss_short.avg:.2f} ' \
                              f'| 2d_short_accel: {accel_loss_short_2d.avg:.2f} ' \
                              f'| 3d_short_accel: {accel_loss_short_3d.avg:.2f} '
@@ -320,7 +319,7 @@ class Trainer():
             self.epoch = epoch
             self.train()
             self.validate()
-            if epoch + 1 >= self.val_epoch:
+            if (epoch + 1) % 10 == 0 :
                 performance = self.evaluate()
 
             # log the learning rate
@@ -328,7 +327,7 @@ class Trainer():
                 print(f'Learning rate {param_group["lr"]}')
                 self.writer.add_scalar('lr/gen_lr', param_group['lr'], global_step=self.epoch)
             
-            if epoch + 1 >= self.val_epoch:
+            if (epoch + 1) % 10 == 0 :
                 logger.info(f'Epoch {epoch+1} performance: {performance:.4f}')
                 self.save_model(performance, epoch)
 
